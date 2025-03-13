@@ -1,9 +1,9 @@
 .PHONY: build run clean
 
-engine_srcs := $(wildcard engine/*.odin)
-testbed_srcs := $(wildcard testbed/*.odin)
+GAME_NAME := testbed
+
 asset_srcs := $(shell find assets -type f -not -path "assets/shaders/*")
-asset_dsts := $(patsubst assets/shaders/%,build/shaders/%.spv,$(shader_srcs))
+asset_dsts := $(patsubst assets/%,build/assets/%,$(asset_srcs))
 shader_srcs := $(wildcard assets/shaders/*.vert) $(wildcard assets/shaders/*.frag)
 shader_objs := $(patsubst assets/shaders/%,build/shaders/%.spv,$(shader_srcs))
 
@@ -16,18 +16,24 @@ build/assets/%: assets/%
 
 build_assets: $(shader_objs) $(assets)
 
-build_engine: $(engine_src) $(shader_objs)
-	# @mkdir -p build
-	# @odin build engine -build-mode:dynamic -o:none -out:build/engine -debug
-	# @find assets -mindepth 1 -maxdepth 1 ! -name shaders -exec cp -r {} build/ \;
+build: build_assets
+	@mkdir -p build/
 
-build_testbed: $(testbed_src) $(shader_objs) build_engine
-	@mkdir -p build
-	@odin build testbed -o:none -out:build/testbed -debug
-	@find assets -mindepth 1 -maxdepth 1 ! -name shaders -exec cp -r {} build/ \;
+	@odin build $(GAME_NAME) \
+		-debug \
+		-build-mode:dynamic \
+		-out:build/$(GAME_NAME)
 
-testbed: build_testbed
-	@cd build && ./testbed
+	@odin build bolt \
+		$(FLAGS) \
+		-debug \
+		-define:GAME_NAME=$(GAME_NAME) \
+		-collection:vendored=vendored \
+		-collection:bolt=bolt \
+		-out:build/$(GAME_NAME)
+
+run: build
+	cd build && ./$(GAME_NAME)
 
 clean:
 	@rm -rf build
