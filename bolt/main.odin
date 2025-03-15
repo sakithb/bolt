@@ -5,9 +5,8 @@ import "core:log"
 import "core:mem"
 
 import "bolt:renderer"
-import pl "bolt:platform"
-
-import vk "vendored:vulkan"
+import "bolt:events"
+import "bolt:platform"
 
 INIT_WIDTH :: #config(INIT_WIDTH, 1280)
 INIT_HEIGHT :: #config(INIT_WIDTH, 720)
@@ -23,10 +22,10 @@ Game_Api :: struct {
     library: dynlib.Library
 }
 
-tmp_vertex_data := [3][5]f32{
-    {0.0, -0.5, 1.0, 0.0, 0.0},
-    {0.5, 0.5, 0.0, 1.0, 0.0},
-    {-0.5, 0.5, 0.0, 0.0, 1.0}
+tmp_vertex_data := [?]f32{
+    0.0, -0.5, 1.0, 0.0, 0.0,
+    0.5, 0.5, 0.0, 1.0, 0.0,
+    -0.5, 0.5, 0.0, 0.0, 1.0
 }
 
 main :: proc() {
@@ -57,38 +56,38 @@ main :: proc() {
         }
 	}
 
-    // TODO: width and height
-    if !pl.init(INIT_WIDTH, INIT_HEIGHT) do log.panic("Could not init platform layer")
-    defer pl.deinit()
-
-    game_api, game_api_ok := load_game_api()
-    if !game_api_ok do log.panic("Could not load game library")
+    game_api := load_game_api() or_else log.panic("Could not load game library")
     defer if !unload_game_api(game_api) do log.panic("Could not unload game library")
 
-    // Init engine
-    renderer_err := renderer.init({"Test", 0, 1, 0})
-    if renderer_err != nil do log.panicf("Could not init renderer: %v", renderer_err)
+    if !platform.init(INIT_WIDTH, INIT_HEIGHT) do log.panic("Could not init platform layer")
+    defer platform.deinit()
+
+    if err := events.init(); err != nil do log.panicf("Could not init event subsystem: %v", err)
+    defer if err := events.deinit(); err != nil do log.panic("Could not de-init event subsystem: %v", err)
+
+    if err := renderer.init({"Test", 0, 1, 0}); err != nil do log.panic("Could not init renderer subsystem: %v")
     defer renderer.deinit()
 
-    buf, buf_err := renderer.upload_buffer(tmp_vertex_data[:])
-    if buf_err != nil do log.panicf("Could not upload vertices")
-    defer renderer.free_buffer(buf)
+    tri := renderer.mesh_create(tmp_vertex_data[:], 3) or_else log.panic("Could not create mesh")
+    defer renderer.mesh_destroy(&tri)
 
-    // Init game
     game_api.init()
     defer game_api.deinit()
 
-    for !pl.wsi_should_close() {
+    for !platform.wsi_should_close() {
         game_api.update()
 
-        renderer.draw_begin(renderer.renderer.cmd_buf_tmp)
+        if err := renderer.draw_begin(); err != nil {
+            log.panicf("could not begin drawing: %v", err)
+        }
 
-        vk.CmdBindPipeline(renderer.renderer.cmd_buf_tmp, .GRAPHICS, renderer.renderer.pipeline.hnd)
-        vk.CmdBindVertexBuffers(renderer.renderer.cmd_buf_tmp, 0, 1, &buf.hnd, raw_data([]vk.DeviceSize{0}))
+        renderer.mesh_draw(&tri)
 
-        renderer.draw_end(renderer.renderer.cmd_buf_tmp)
+        if err := renderer.draw_end(); err != nil {
+            log.panicf("could not end drawing: %v", err)
+        }
 
-        pl.wsi_poll_events()
+        platform.wsi_poll_events()
     }
 }
 
@@ -105,3 +104,4 @@ load_game_api :: proc() -> (api: Game_Api, ok: bool) {
 unload_game_api :: proc(api: Game_Api) -> bool {
     return dynlib.unload_library(api.library)
 }
+

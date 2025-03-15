@@ -7,7 +7,7 @@ import "core:os"
 import "core:mem"
 import "core:log"
 
-import pl "bolt:platform"
+import "bolt:platform"
 
 import vk "vendored:vulkan"
 
@@ -28,9 +28,8 @@ Renderer :: struct {
     render_pass: Render_Pass,
     pipeline: Pipeline,
 
-    // TODO: Organize better
     cmd_pool: vk.CommandPool,
-    cmd_buf_tmp: vk.CommandBuffer,
+    cmd_buf: vk.CommandBuffer,
 
     image_avail_sem: vk.Semaphore,
     render_fin_sem: vk.Semaphore,
@@ -123,7 +122,7 @@ REQUIRED_DEVICE_EXTENSIONS := []cstring{
 VK_NULL_HANDLE :: 0
 VK_LIB_NAME :: "libvulkan.so.1" when ODIN_OS == .Linux else "vulkan-1.dll"
 
-renderer := Renderer{}
+rndr := Renderer{}
 
 init :: proc(init_info: Renderer_Init_Info) -> Renderer_Err {
     lib, lib_ok := dynlib.load_library(VK_LIB_NAME)
@@ -174,8 +173,6 @@ init :: proc(init_info: Renderer_Init_Info) -> Renderer_Err {
 		}
 	}
 
-	using renderer
-
 	instance_info := vk.InstanceCreateInfo {
 		sType                   = .INSTANCE_CREATE_INFO,
 		pApplicationInfo        = &vk.ApplicationInfo{
@@ -200,12 +197,12 @@ init :: proc(init_info: Renderer_Init_Info) -> Renderer_Err {
 		ppEnabledExtensionNames = raw_data(REQUIRED_INSTANCE_EXTENSIONS),
 	}
 
-	vk.CreateInstance(&instance_info, nil, &instance) or_return
+	vk.CreateInstance(&instance_info, nil, &rndr.instance) or_return
 
-	vk.load_proc_addresses_instance(instance)
+	vk.load_proc_addresses_instance(rndr.instance)
 
-    surface.hnd = pl.wsi_create_surface(instance) or_return
-    surface.width, surface.height = pl.wsi_get_dimensions()
+    rndr.surface.hnd = platform.wsi_create_surface(rndr.instance) or_return
+    rndr.surface.width, rndr.surface.height = platform.wsi_get_dimensions()
 
 	create_device() or_return
 	create_swapchain() or_return
@@ -223,12 +220,10 @@ Scored_Physical_Device :: struct {
 }
 
 create_device :: proc() -> Renderer_Err {
-	using renderer
-
 	phys_devices_n: u32
-	vk.EnumeratePhysicalDevices(instance, &phys_devices_n, nil) or_return
+	vk.EnumeratePhysicalDevices(rndr.instance, &phys_devices_n, nil) or_return
 	phys_devices := make([]vk.PhysicalDevice, phys_devices_n, context.temp_allocator)
-	vk.EnumeratePhysicalDevices(instance, &phys_devices_n, raw_data(phys_devices)) or_return
+	vk.EnumeratePhysicalDevices(rndr.instance, &phys_devices_n, raw_data(phys_devices)) or_return
 
 	scored_phys_devices := make([]Scored_Physical_Device, phys_devices_n, context.temp_allocator)
 
@@ -317,7 +312,7 @@ create_device :: proc() -> Renderer_Err {
 			}
 
 			supported: b32
-			vk.GetPhysicalDeviceSurfaceSupportKHR(phys_device, u32(i), surface.hnd, &supported)
+			vk.GetPhysicalDeviceSurfaceSupportKHR(phys_device, u32(i), rndr.surface.hnd, &supported)
 
 			if supported {
 				queue_set |= {.Present}
@@ -329,11 +324,11 @@ create_device :: proc() -> Renderer_Err {
 		if card(queue_set) != len(Queue_Family) do continue
 
         fmts_n: u32
-        vk.GetPhysicalDeviceSurfaceFormatsKHR(phys_device, surface.hnd, &fmts_n, nil)
+        vk.GetPhysicalDeviceSurfaceFormatsKHR(phys_device, rndr.surface.hnd, &fmts_n, nil)
         if fmts_n == 0 do continue
 
         present_modes_n: u32
-        vk.GetPhysicalDeviceSurfacePresentModesKHR(phys_device, surface.hnd, &present_modes_n, nil)
+        vk.GetPhysicalDeviceSurfacePresentModesKHR(phys_device, rndr.surface.hnd, &present_modes_n, nil)
         if present_modes_n == 0 do continue
 
 		// TODO: Check for limits if needed
@@ -347,7 +342,7 @@ create_device :: proc() -> Renderer_Err {
         mem_props: vk.PhysicalDeviceMemoryProperties
         vk.GetPhysicalDeviceMemoryProperties(phys_device, &mem_props)
 
-		physical_device = Physical_Device{
+		rndr.physical_device = Physical_Device{
 			hnd = phys_device,
 			props  = props,
 			feats  = feats,
@@ -357,44 +352,44 @@ create_device :: proc() -> Renderer_Err {
 		break
 	}
 
-	if physical_device.hnd == nil do return .Phys_Dev_Not_Found
+	if rndr.physical_device.hnd == nil do return .Phys_Dev_Not_Found
 
 	unique_indices := make(map[int]bool, context.temp_allocator)
 
-	// TODO: Do this in a better way
+	// TODO: Could this be done in a better way?
 	fam_outer: for q_fam in Queue_Family {
 		for fam, i in fams {
 			switch q_fam {
 			case .Graphics:
 				if .GRAPHICS in fam.queueFlags {
 					unique_indices[i] = true
-					queues[.Graphics].index = u32(i)
+					rndr.queues[.Graphics].index = u32(i)
 					continue fam_outer
 				}
 			case .Present:
 				present_supported: b32
 				vk.GetPhysicalDeviceSurfaceSupportKHR(
-					physical_device.hnd,
+					rndr.physical_device.hnd,
 					u32(i),
-					surface.hnd,
+					rndr.surface.hnd,
 					&present_supported,
 				)
 				if present_supported {
 					unique_indices[i] = true
-					queues[.Present].index = u32(i)
+					rndr.queues[.Present].index = u32(i)
 					continue fam_outer
 				}
 			case .Transfer:
 				if .TRANSFER in fam.queueFlags {
 					unique_indices[i] = true
-					queues[.Transfer].index = u32(i)
+					rndr.queues[.Transfer].index = u32(i)
 					continue fam_outer
 				}
 			}
 		}
 
 		if q_fam == .Transfer {
-			queues[.Transfer].index = queues[.Graphics].index
+			rndr.queues[.Transfer].index = rndr.queues[.Graphics].index
 		}
 	}
 
@@ -425,113 +420,111 @@ create_device :: proc() -> Renderer_Err {
 		pEnabledFeatures        = nil,
 	}
 
-    vk.CreateDevice(physical_device.hnd, &device_create_info, nil, &device.hnd) or_return
+    vk.CreateDevice(rndr.physical_device.hnd, &device_create_info, nil, &rndr.device.hnd) or_return
 
-    for &queue in queues {
-        vk.GetDeviceQueue(device.hnd, queue.index, 0, &queue.hnd)
+    for &queue in rndr.queues {
+        vk.GetDeviceQueue(rndr.device.hnd, queue.index, 0, &queue.hnd)
     }
 
     return nil
 }
 
 create_swapchain :: proc() -> Renderer_Err {
-	using renderer
-
     fmts_n: u32
-    vk.GetPhysicalDeviceSurfaceFormatsKHR(physical_device.hnd, surface.hnd, &fmts_n, nil) or_return
+    vk.GetPhysicalDeviceSurfaceFormatsKHR(rndr.physical_device.hnd, rndr.surface.hnd, &fmts_n, nil) or_return
     fmts := make([]vk.SurfaceFormatKHR, fmts_n, context.temp_allocator)
-    vk.GetPhysicalDeviceSurfaceFormatsKHR(physical_device.hnd, surface.hnd, &fmts_n, raw_data(fmts)) or_return
+    vk.GetPhysicalDeviceSurfaceFormatsKHR(rndr.physical_device.hnd, rndr.surface.hnd, &fmts_n, raw_data(fmts)) or_return
 
-    swapchain.format = fmts[0]
+    rndr.swapchain.format = fmts[0]
     for fmt in fmts {
 		if fmt.format == .B8G8R8A8_SRGB && fmt.colorSpace == .SRGB_NONLINEAR {
-            swapchain.format = fmt
+            rndr.swapchain.format = fmt
         }
     }
 
     present_modes_n: u32
-    vk.GetPhysicalDeviceSurfacePresentModesKHR(physical_device.hnd, surface.hnd, &present_modes_n, nil) or_return
+    vk.GetPhysicalDeviceSurfacePresentModesKHR(rndr.physical_device.hnd, rndr.surface.hnd, &present_modes_n, nil) or_return
     present_modes := make([]vk.PresentModeKHR, present_modes_n, context.temp_allocator)
     vk.GetPhysicalDeviceSurfacePresentModesKHR(
-        physical_device.hnd,
-        surface.hnd,
+        rndr.physical_device.hnd,
+        rndr.surface.hnd,
         &present_modes_n,
         raw_data(present_modes)
     ) or_return
 
-    swapchain.present_mode = .FIFO
+    rndr.swapchain.present_mode = .FIFO
     for present_mode in present_modes {
 		if present_mode == .MAILBOX {
-            swapchain.present_mode = present_mode
+            rndr.swapchain.present_mode = present_mode
         }
     }
 
-    vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device.hnd, surface.hnd, &swapchain.capabilities)
+    vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(rndr.physical_device.hnd, rndr.surface.hnd, &rndr.swapchain.capabilities)
 
-	if (swapchain.capabilities.currentExtent.width == max(u32)) {
-		swapchain.extent.width = clamp(
-			u32(surface.width),
-			swapchain.capabilities.minImageExtent.width,
-			swapchain.capabilities.maxImageExtent.height,
+	if (rndr.swapchain.capabilities.currentExtent.width == max(u32)) {
+		rndr.swapchain.extent.width = clamp(
+			u32(rndr.surface.width),
+			rndr.swapchain.capabilities.minImageExtent.width,
+			rndr.swapchain.capabilities.maxImageExtent.height,
 		)
-		swapchain.extent.height = clamp(
-			u32(surface.height),
-			swapchain.capabilities.minImageExtent.height,
-			swapchain.capabilities.maxImageExtent.height,
+		rndr.swapchain.extent.height = clamp(
+			u32(rndr.surface.height),
+			rndr.swapchain.capabilities.minImageExtent.height,
+			rndr.swapchain.capabilities.maxImageExtent.height,
 		)
 	} else {
-		swapchain.extent = swapchain.capabilities.currentExtent
+		rndr.swapchain.extent = rndr.swapchain.capabilities.currentExtent
 	}
 
-	images_n := swapchain.capabilities.minImageCount + 1
-	if (swapchain.capabilities.maxImageCount > 0 && images_n > swapchain.capabilities.maxImageCount) {
-		images_n = swapchain.capabilities.maxImageCount
+	images_n := rndr.swapchain.capabilities.minImageCount + 1
+	if (rndr.swapchain.capabilities.maxImageCount > 0 && images_n > rndr.swapchain.capabilities.maxImageCount) {
+		images_n = rndr.swapchain.capabilities.maxImageCount
 	}
 
     image_sharing_mode := vk.SharingMode.EXCLUSIVE
     queue_fam_index_n: u32 = 0
     queue_fam_indices: [^]u32 = nil
-	if (queues[.Graphics].index != queues[.Present].index) {
+	if (rndr.queues[.Graphics].index != rndr.queues[.Present].index) {
 		image_sharing_mode = .CONCURRENT
 		queue_fam_index_n = 2
 		queue_fam_indices = raw_data([]u32{
-            u32(queues[.Graphics].index),
-            u32(queues[.Present].index)
+            u32(rndr.queues[.Graphics].index),
+            u32(rndr.queues[.Present].index)
         })
 	}
 
 	swapchain_create_info := vk.SwapchainCreateInfoKHR {
 		sType            = .SWAPCHAIN_CREATE_INFO_KHR,
-		surface          = surface.hnd,
+		surface          = rndr.surface.hnd,
 		minImageCount    = images_n,
-		imageFormat      = swapchain.format.format,
-		imageColorSpace  = swapchain.format.colorSpace,
-		imageExtent      = swapchain.extent,
+		imageFormat      = rndr.swapchain.format.format,
+		imageColorSpace  = rndr.swapchain.format.colorSpace,
+		imageExtent      = rndr.swapchain.extent,
 		imageArrayLayers = 1,
 		imageUsage       = {.COLOR_ATTACHMENT},
         imageSharingMode = image_sharing_mode,
         queueFamilyIndexCount = queue_fam_index_n,
         pQueueFamilyIndices = queue_fam_indices,
-		preTransform     = swapchain.capabilities.currentTransform,
+		preTransform     = rndr.swapchain.capabilities.currentTransform,
 		compositeAlpha   = {.OPAQUE},
-		presentMode      = swapchain.present_mode,
+		presentMode      = rndr.swapchain.present_mode,
 		clipped          = true,
-        oldSwapchain = swapchain.hnd,
+        oldSwapchain = rndr.swapchain.hnd,
 	}
 
-	vk.CreateSwapchainKHR(device.hnd, &swapchain_create_info, nil, &swapchain.hnd) or_return
+	vk.CreateSwapchainKHR(rndr.device.hnd, &swapchain_create_info, nil, &rndr.swapchain.hnd) or_return
 
-    vk.GetSwapchainImagesKHR(device.hnd, swapchain.hnd, &images_n, nil) or_return
-    swapchain.images = make([]vk.Image, images_n)
-    vk.GetSwapchainImagesKHR(device.hnd, swapchain.hnd, &images_n, raw_data(swapchain.images)) or_return
+    vk.GetSwapchainImagesKHR(rndr.device.hnd, rndr.swapchain.hnd, &images_n, nil) or_return
+    rndr.swapchain.images = make([]vk.Image, images_n)
+    vk.GetSwapchainImagesKHR(rndr.device.hnd, rndr.swapchain.hnd, &images_n, raw_data(rndr.swapchain.images)) or_return
 
-    swapchain.image_views = make([]vk.ImageView, images_n)
-	for image, i in swapchain.images {
-		swapchain.image_views[i] = create_image_view(image, swapchain.format.format, {.COLOR}) or_return
+    rndr.swapchain.image_views = make([]vk.ImageView, images_n)
+	for image, i in rndr.swapchain.images {
+		rndr.swapchain.image_views[i] = create_image_view(image, rndr.swapchain.format.format, {.COLOR}) or_return
 	}
 
     color_attachment := vk.AttachmentDescription {
-        format = swapchain.format.format,
+        format = rndr.swapchain.format.format,
         samples = {._1},
         loadOp = .CLEAR,
         storeOp = .STORE,
@@ -572,21 +565,21 @@ create_swapchain :: proc() -> Renderer_Err {
         pDependencies = nil,
     }
 
-    vk.CreateRenderPass(device.hnd, &render_pass_create_info, nil, &render_pass.hnd) or_return
+    vk.CreateRenderPass(rndr.device.hnd, &render_pass_create_info, nil, &rndr.render_pass.hnd) or_return
 
-    render_pass.framebuffers = make([]vk.Framebuffer, len(swapchain.image_views))
-    for &image_view, i in swapchain.image_views {
+    rndr.render_pass.framebuffers = make([]vk.Framebuffer, len(rndr.swapchain.image_views))
+    for &image_view, i in rndr.swapchain.image_views {
         framebuffer_create_info := vk.FramebufferCreateInfo{
             sType = .FRAMEBUFFER_CREATE_INFO,
-            renderPass = render_pass.hnd,
+            renderPass = rndr.render_pass.hnd,
             attachmentCount = 1,
             pAttachments = &image_view,
-            width = swapchain.extent.width,
-            height = swapchain.extent.height,
+            width = rndr.swapchain.extent.width,
+            height = rndr.swapchain.extent.height,
             layers = 1,
         }
 
-        vk.CreateFramebuffer(device.hnd, &framebuffer_create_info, nil, &render_pass.framebuffers[i]) or_return
+        vk.CreateFramebuffer(rndr.device.hnd, &framebuffer_create_info, nil, &rndr.render_pass.framebuffers[i]) or_return
     }
 
     sem_create_info := vk.SemaphoreCreateInfo{
@@ -598,38 +591,34 @@ create_swapchain :: proc() -> Renderer_Err {
         flags = {.SIGNALED}
     }
 
-    vk.CreateSemaphore(device.hnd, &sem_create_info, nil, &image_avail_sem) or_return
-    vk.CreateSemaphore(device.hnd, &sem_create_info, nil, &render_fin_sem) or_return
-    vk.CreateFence(device.hnd, &fence_create_info, nil, &in_flight_fence) or_return
+    vk.CreateSemaphore(rndr.device.hnd, &sem_create_info, nil, &rndr.image_avail_sem) or_return
+    vk.CreateSemaphore(rndr.device.hnd, &sem_create_info, nil, &rndr.render_fin_sem) or_return
+    vk.CreateFence(rndr.device.hnd, &fence_create_info, nil, &rndr.in_flight_fence) or_return
 
     return nil
 }
 
 destroy_swapchain :: proc() {
-    using renderer
+    vk.DestroyFence(rndr.device.hnd, rndr.in_flight_fence, nil)
+    vk.DestroySemaphore(rndr.device.hnd, rndr.render_fin_sem, nil)
+    vk.DestroySemaphore(rndr.device.hnd, rndr.image_avail_sem, nil)
 
-    vk.DestroyFence(device.hnd, in_flight_fence, nil)
-    vk.DestroySemaphore(device.hnd, render_fin_sem, nil)
-    vk.DestroySemaphore(device.hnd, image_avail_sem, nil)
+    delete(rndr.swapchain.images)
+    delete(rndr.swapchain.image_views)
+    delete(rndr.render_pass.framebuffers)
 
-    delete(swapchain.images)
-    delete(swapchain.image_views)
-    delete(render_pass.framebuffers)
-
-    for _, i in swapchain.images {
-        vk.DestroyFramebuffer(device.hnd, render_pass.framebuffers[i], nil)
-        vk.DestroyImageView(device.hnd, swapchain.image_views[i], nil)
+    for _, i in rndr.swapchain.images {
+        vk.DestroyFramebuffer(rndr.device.hnd, rndr.render_pass.framebuffers[i], nil)
+        vk.DestroyImageView(rndr.device.hnd, rndr.swapchain.image_views[i], nil)
     }
 
-    vk.DestroyRenderPass(device.hnd, render_pass.hnd, nil)
-    vk.DestroySwapchainKHR(device.hnd, swapchain.hnd, nil)
+    vk.DestroyRenderPass(rndr.device.hnd, rndr.render_pass.hnd, nil)
+    vk.DestroySwapchainKHR(rndr.device.hnd, rndr.swapchain.hnd, nil)
 }
 
 create_pipelines :: proc() -> Renderer_Err {
-    using renderer
-
     vert_shader := create_shader_module("shaders/shader.vert.spv") or_return
-    defer vk.DestroyShaderModule(device.hnd, vert_shader, nil)
+    defer vk.DestroyShaderModule(rndr.device.hnd, vert_shader, nil)
 
     vertex_stage := vk.PipelineShaderStageCreateInfo{
         sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -640,7 +629,7 @@ create_pipelines :: proc() -> Renderer_Err {
     }
 
     frag_shader := create_shader_module("shaders/shader.frag.spv") or_return
-    defer vk.DestroyShaderModule(device.hnd, frag_shader, nil)
+    defer vk.DestroyShaderModule(rndr.device.hnd, frag_shader, nil)
 
     fragment_stage := vk.PipelineShaderStageCreateInfo{
         sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -781,10 +770,10 @@ create_pipelines :: proc() -> Renderer_Err {
     }
 
     vk.CreatePipelineLayout(
-        device.hnd,
+        rndr.device.hnd,
         &layout_create_info,
         nil,
-        &pipeline.layout
+        &rndr.pipeline.layout
     ) or_return
 
     pipeline_create_info := vk.GraphicsPipelineCreateInfo{
@@ -800,67 +789,63 @@ create_pipelines :: proc() -> Renderer_Err {
         pDepthStencilState = &ds_state,
         pColorBlendState = &color_blend_state,
         pDynamicState = &dynamic_state,
-        layout = pipeline.layout,
-        renderPass = render_pass.hnd,
+        layout = rndr.pipeline.layout,
+        renderPass = rndr.render_pass.hnd,
         subpass = 0,
         basePipelineHandle = {},
         basePipelineIndex = 0
     }
 
     vk.CreateGraphicsPipelines(
-        device.hnd,
+        rndr.device.hnd,
         VK_NULL_HANDLE,
         1,
         &pipeline_create_info,
         nil,
-        &pipeline.hnd
+        &rndr.pipeline.hnd
     ) or_return
 
     return nil
 }
 
 create_command_buffers :: proc() -> Renderer_Err {
-    using renderer
-
     // TODO: cmd pool reset?
     pool_create_info := vk.CommandPoolCreateInfo{
         sType = .COMMAND_POOL_CREATE_INFO,
         flags = {.RESET_COMMAND_BUFFER},
-        queueFamilyIndex = u32(queues[.Graphics].index)
+        queueFamilyIndex = u32(rndr.queues[.Graphics].index)
     }
 
-    vk.CreateCommandPool(device.hnd, &pool_create_info, nil, &cmd_pool) or_return
+    vk.CreateCommandPool(rndr.device.hnd, &pool_create_info, nil, &rndr.cmd_pool) or_return
 
     buffer_alloc_info := vk.CommandBufferAllocateInfo{
         sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         level = .PRIMARY,
         commandBufferCount = 1,
-        commandPool = cmd_pool,
+        commandPool = rndr.cmd_pool,
     }
 
     // TODO: cmd buf
-    vk.AllocateCommandBuffers(device.hnd, &buffer_alloc_info, &cmd_buf_tmp) or_return
+    vk.AllocateCommandBuffers(rndr.device.hnd, &buffer_alloc_info, &rndr.cmd_buf) or_return
 
     return nil
 }
 
 deinit :: proc() {
-    using renderer
-
-    if r := vk.DeviceWaitIdle(device.hnd); r != vk.Result.SUCCESS {
+    if r := vk.DeviceWaitIdle(rndr.device.hnd); r != vk.Result.SUCCESS {
         log.panicf("could not wait for devie: %v", r)
     }
 
-    vk.DestroyCommandPool(device.hnd, cmd_pool, nil)
+    vk.DestroyCommandPool(rndr.device.hnd, rndr.cmd_pool, nil)
 
     destroy_swapchain()
 
-    vk.DestroyPipelineLayout(device.hnd, pipeline.layout, nil)
-    vk.DestroyPipeline(device.hnd, pipeline.hnd, nil)
-    vk.DestroyDevice(device.hnd, nil)
+    vk.DestroyPipelineLayout(rndr.device.hnd, rndr.pipeline.layout, nil)
+    vk.DestroyPipeline(rndr.device.hnd, rndr.pipeline.hnd, nil)
+    vk.DestroyDevice(rndr.device.hnd, nil)
 
-    vk.DestroySurfaceKHR(instance, surface.hnd, nil)
-    vk.DestroyInstance(instance, nil)
+    vk.DestroySurfaceKHR(rndr.instance, rndr.surface.hnd, nil)
+    vk.DestroyInstance(rndr.instance, nil)
 }
 
 create_image_view :: proc(
@@ -883,7 +868,7 @@ create_image_view :: proc(
 		},
 	}
 
-    vk.CreateImageView(renderer.device.hnd, &create_info, nil, &image_view) or_return
+    vk.CreateImageView(rndr.device.hnd, &create_info, nil, &image_view) or_return
 
     return
 }
@@ -897,7 +882,7 @@ create_shader_module :: proc(path: string) -> (module: vk.ShaderModule, err: Ren
         pCode = raw_data(transmute([]u32)data)
     }
 
-    vk.CreateShaderModule(renderer.device.hnd, &create_info, nil, &module) or_return
+    vk.CreateShaderModule(rndr.device.hnd, &create_info, nil, &module) or_return
 
     delete(data)
 
@@ -910,27 +895,25 @@ create_buffer :: proc(
     usage: vk.BufferUsageFlags,
     mem_props: vk.MemoryPropertyFlags
 ) -> (buffer: Buffer, err: Renderer_Err) {
-    using renderer
-
     buffer_create_info := vk.BufferCreateInfo{
         sType = .BUFFER_CREATE_INFO,
         size = cast(vk.DeviceSize)size,
         usage = usage,
         sharingMode = .EXCLUSIVE,
         queueFamilyIndexCount = 1,
-        pQueueFamilyIndices = raw_data([]u32{u32(queues[.Graphics].index)})
+        pQueueFamilyIndices = raw_data([]u32{u32(rndr.queues[.Graphics].index)})
     }
  
-    vk.CreateBuffer(device.hnd, &buffer_create_info, nil, &buffer.hnd) or_return
+    vk.CreateBuffer(rndr.device.hnd, &buffer_create_info, nil, &buffer.hnd) or_return
 
     mem_reqs: vk.MemoryRequirements
-    vk.GetBufferMemoryRequirements(device.hnd, buffer.hnd, &mem_reqs)
+    vk.GetBufferMemoryRequirements(rndr.device.hnd, buffer.hnd, &mem_reqs)
 
     mem_type_index := -1
 
-    for mem_type, i in physical_device.mem_props.memoryTypes {
+    for _, i in rndr.physical_device.mem_props.memoryTypes {
         if mem_reqs.memoryTypeBits & (1 << u32(i)) != 0 && 
-           mem_props <= physical_device.mem_props.memoryTypes[i].propertyFlags {
+           mem_props <= rndr.physical_device.mem_props.memoryTypes[i].propertyFlags {
             mem_type_index = i
             break
         }
@@ -947,50 +930,49 @@ create_buffer :: proc(
         memoryTypeIndex = u32(mem_type_index)
     }
 
-    vk.AllocateMemory(device.hnd, &alloc_info, nil, &buffer.mem) or_return
-    vk.BindBufferMemory(device.hnd, buffer.hnd, buffer.mem, 0) or_return
+    vk.AllocateMemory(rndr.device.hnd, &alloc_info, nil, &buffer.mem) or_return
+    vk.BindBufferMemory(rndr.device.hnd, buffer.hnd, buffer.mem, 0) or_return
 
     return
 }
 
 upload_buffer :: proc(
-    data: $T/[]$E,
+    data: rawptr,
+    size: uint
 ) -> (dst_buf: Buffer, err: Renderer_Err) {
-    using renderer
-
     dst_buf = create_buffer(
-        size_of(data),
+        size,
         {.TRANSFER_DST, .VERTEX_BUFFER},
         {.DEVICE_LOCAL}
     ) or_return
 
     staging_buf := create_buffer(
-        size_of(data),
+        size,
         {.TRANSFER_SRC},
         {.HOST_VISIBLE, .HOST_COHERENT}
     ) or_return
 
     mapped_data: rawptr
     vk.MapMemory(
-        device.hnd,
+        rndr.device.hnd,
         staging_buf.mem,
         0,
-        size_of(data),
+        cast(vk.DeviceSize)size,
         {},
         &mapped_data
     ) or_return
-    mem.copy(mapped_data, raw_data(data), size_of(data))
-    vk.UnmapMemory(device.hnd, staging_buf.mem)
+    mem.copy(mapped_data, data, int(size))
+    vk.UnmapMemory(rndr.device.hnd, staging_buf.mem)
 
     alloc_info := vk.CommandBufferAllocateInfo{
         sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         commandBufferCount = 1,
         level = .PRIMARY,
-        commandPool = cmd_pool,
+        commandPool = rndr.cmd_pool,
     }
 
     tmp_cmd_buf: vk.CommandBuffer
-    vk.AllocateCommandBuffers(device.hnd, &alloc_info, &tmp_cmd_buf) or_return
+    vk.AllocateCommandBuffers(rndr.device.hnd, &alloc_info, &tmp_cmd_buf) or_return
 
     begin_info := vk.CommandBufferBeginInfo{
         sType = .COMMAND_BUFFER_BEGIN_INFO, 
@@ -1000,7 +982,7 @@ upload_buffer :: proc(
     vk.BeginCommandBuffer(tmp_cmd_buf, &begin_info) or_return
 
     region := vk.BufferCopy{
-        size = size_of(data),
+        size = cast(vk.DeviceSize)size,
     }
 
     vk.CmdCopyBuffer(tmp_cmd_buf, staging_buf.hnd, dst_buf.hnd, 1, &region)
@@ -1013,25 +995,23 @@ upload_buffer :: proc(
         pCommandBuffers = &tmp_cmd_buf
     }
 
-    vk.QueueSubmit(queues[.Transfer].hnd, 1, &submit_info, VK_NULL_HANDLE) or_return
-    vk.QueueWaitIdle(queues[.Transfer].hnd) or_return
+    vk.QueueSubmit(rndr.queues[.Transfer].hnd, 1, &submit_info, VK_NULL_HANDLE) or_return
+    vk.QueueWaitIdle(rndr.queues[.Transfer].hnd) or_return
 
-    vk.FreeCommandBuffers(device.hnd, cmd_pool, 1, &tmp_cmd_buf)
+    vk.FreeCommandBuffers(rndr.device.hnd, rndr.cmd_pool, 1, &tmp_cmd_buf)
 
-    vk.DestroyBuffer(device.hnd, staging_buf.hnd, nil)
-    vk.FreeMemory(device.hnd, staging_buf.mem, nil)
+    vk.DestroyBuffer(rndr.device.hnd, staging_buf.hnd, nil)
+    vk.FreeMemory(rndr.device.hnd, staging_buf.mem, nil)
 
     return
 }
 
 free_buffer :: proc(buf: Buffer) {
-    using renderer
-
-    if r := vk.DeviceWaitIdle(device.hnd); r != vk.Result.SUCCESS {
+    if r := vk.DeviceWaitIdle(rndr.device.hnd); r != vk.Result.SUCCESS {
         log.panicf("could not wait for devie: %v", r)
     }
 
-    vk.DestroyBuffer(device.hnd, buf.hnd, nil)
-    vk.FreeMemory(device.hnd, buf.mem, nil)
+    vk.DestroyBuffer(rndr.device.hnd, buf.hnd, nil)
+    vk.FreeMemory(rndr.device.hnd, buf.mem, nil)
 }
 
