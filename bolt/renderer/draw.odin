@@ -26,7 +26,7 @@ draw_begin :: proc() -> Renderer_Err {
         return res
     }
 
-	vk.ResetCommandBuffer(rndr.cmd_buf, {})
+	vk.ResetCommandBuffer(rndr.cmd_buf, {}) or_return
 
     command_buffer_begin_info := vk.CommandBufferBeginInfo{
         sType = .COMMAND_BUFFER_BEGIN_INFO,
@@ -34,6 +34,11 @@ draw_begin :: proc() -> Renderer_Err {
     }
 
     vk.BeginCommandBuffer(rndr.cmd_buf, &command_buffer_begin_info) or_return
+
+    clear_values := []vk.ClearValue{
+        { color = { float32 = { 0.0, 0.0, 0.0, 1.0 } } },
+        { depthStencil = { 1.0, 0.0 } },
+    }
 
     render_pass_begin_info := vk.RenderPassBeginInfo{
         sType = .RENDER_PASS_BEGIN_INFO,
@@ -43,12 +48,8 @@ draw_begin :: proc() -> Renderer_Err {
             offset = {0,0},
             extent = rndr.swapchain.extent
         },
-        clearValueCount = 1,
-        pClearValues = &vk.ClearValue{
-            color = {
-                float32 = {0.0, 0.0, 0.0, 1.0}
-            }
-        }
+        clearValueCount = u32(len(clear_values)),
+        pClearValues = raw_data(clear_values)
     }
 
     vk.CmdBeginRenderPass(rndr.cmd_buf, &render_pass_begin_info, .INLINE)
@@ -70,6 +71,17 @@ draw_begin :: proc() -> Renderer_Err {
 	}
 
 	vk.CmdSetScissor(rndr.cmd_buf, 0, 1, &scissor)
+
+    vk.CmdBindDescriptorSets(
+        rndr.cmd_buf,
+        .GRAPHICS,
+        rndr.pipeline.layout,
+        0,
+        1,
+        &rndr.desc_set,
+        0,
+        nil
+    )
 
     return nil
 }

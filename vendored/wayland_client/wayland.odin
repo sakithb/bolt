@@ -1295,7 +1295,7 @@ Display_Listener :: struct{
      * own set of error codes.  The message is a brief description
      * of the error, for (debugging) convenience.
      */
-    error: proc(
+    error: proc "c" (
         data: rawptr,
         display: ^Display,
         /*
@@ -1320,7 +1320,7 @@ Display_Listener :: struct{
      * seen the delete request. When the client receives this event,
      * it will know that it can safely reuse the object ID.
      */
-    delete_id: proc(
+    delete_id: proc "c" (
         data: rawptr,
         display: ^Display,
         /*
@@ -1331,23 +1331,23 @@ Display_Listener :: struct{
 
 }
 
-display_add_listener :: #force_inline proc(display: ^Display, listener: ^Display_Listener, data: rawptr) -> i32 {
+display_add_listener :: #force_inline proc "contextless" (display: ^Display, listener: ^Display_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)display,
         rawptr(listener),
         data
     )
 }
-display_set_user_data :: #force_inline proc(display: ^Display, user_data: rawptr) {
+display_set_user_data :: #force_inline proc "contextless" (display: ^Display, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)display,
         user_data
     )
 }
-display_get_user_data :: #force_inline proc(display: ^Display) -> rawptr {
+display_get_user_data :: #force_inline proc "contextless" (display: ^Display) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)display)
 }
-display_get_version :: #force_inline proc(display: ^Display) -> u32 {
+display_get_version :: #force_inline proc "contextless" (display: ^Display) -> u32 {
     return proxy_get_version(cast(^Proxy)display);
 }
 
@@ -1368,7 +1368,7 @@ DISPLAY_GET_REGISTRY :: 1
  * 
  * The callback_data passed in the callback is undefined and should be ignored.
  */
-display_sync :: #force_inline proc(
+display_sync :: #force_inline proc "contextless" (
     display: ^Display,
 ) -> ^Callback {
     return cast(^Callback)proxy_marshal_flags(
@@ -1393,7 +1393,7 @@ display_sync :: #force_inline proc(
  * Therefore, clients should invoke get_registry as infrequently as
  * possible to avoid wasting memory.
  */
-display_get_registry :: #force_inline proc(
+display_get_registry :: #force_inline proc "contextless" (
     display: ^Display,
 ) -> ^Registry {
     return cast(^Registry)proxy_marshal_flags(
@@ -1416,7 +1416,7 @@ Registry_Listener :: struct{
      * the given name is now available, and it implements the
      * given version of the given interface.
      */
-    global: proc(
+    global: proc "c" (
         data: rawptr,
         registry: ^Registry,
         /*
@@ -1446,7 +1446,7 @@ Registry_Listener :: struct{
      * ignored until the client destroys it, to avoid races between
      * the global going away and a client sending a request to it.
      */
-    global_remove: proc(
+    global_remove: proc "c" (
         data: rawptr,
         registry: ^Registry,
         /*
@@ -1457,23 +1457,23 @@ Registry_Listener :: struct{
 
 }
 
-registry_add_listener :: #force_inline proc(registry: ^Registry, listener: ^Registry_Listener, data: rawptr) -> i32 {
+registry_add_listener :: #force_inline proc "contextless" (registry: ^Registry, listener: ^Registry_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)registry,
         rawptr(listener),
         data
     )
 }
-registry_set_user_data :: #force_inline proc(registry: ^Registry, user_data: rawptr) {
+registry_set_user_data :: #force_inline proc "contextless" (registry: ^Registry, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)registry,
         user_data
     )
 }
-registry_get_user_data :: #force_inline proc(registry: ^Registry) -> rawptr {
+registry_get_user_data :: #force_inline proc "contextless" (registry: ^Registry) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)registry)
 }
-registry_get_version :: #force_inline proc(registry: ^Registry) -> u32 {
+registry_get_version :: #force_inline proc "contextless" (registry: ^Registry) -> u32 {
     return proxy_get_version(cast(^Proxy)registry);
 }
 
@@ -1484,7 +1484,7 @@ REGISTRY_BIND :: 0
  * Binds a new, client-created object to the server using the
  * specified name as the identifier.
  */
-registry_bind :: #force_inline proc(
+registry_bind :: #force_inline proc "contextless" (
     registry: ^Registry,
     /*
      * unique numeric name of the object
@@ -1512,7 +1512,7 @@ Callback_Listener :: struct{
      * done event
      * Notify the client when the related request is done.
      */
-    done: proc(
+    done: proc "c" (
         data: rawptr,
         callback: ^Callback,
         /*
@@ -1523,39 +1523,39 @@ Callback_Listener :: struct{
 
 }
 
-callback_add_listener :: #force_inline proc(callback: ^Callback, listener: ^Callback_Listener, data: rawptr) -> i32 {
+callback_add_listener :: #force_inline proc "contextless" (callback: ^Callback, listener: ^Callback_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)callback,
         rawptr(listener),
         data
     )
 }
-callback_set_user_data :: #force_inline proc(callback: ^Callback, user_data: rawptr) {
+callback_set_user_data :: #force_inline proc "contextless" (callback: ^Callback, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)callback,
         user_data
     )
 }
-callback_get_user_data :: #force_inline proc(callback: ^Callback) -> rawptr {
+callback_get_user_data :: #force_inline proc "contextless" (callback: ^Callback) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)callback)
 }
-callback_get_version :: #force_inline proc(callback: ^Callback) -> u32 {
+callback_get_version :: #force_inline proc "contextless" (callback: ^Callback) -> u32 {
     return proxy_get_version(cast(^Proxy)callback);
 }
 
 
 
 
-compositor_set_user_data :: #force_inline proc(compositor: ^Compositor, user_data: rawptr) {
+compositor_set_user_data :: #force_inline proc "contextless" (compositor: ^Compositor, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)compositor,
         user_data
     )
 }
-compositor_get_user_data :: #force_inline proc(compositor: ^Compositor) -> rawptr {
+compositor_get_user_data :: #force_inline proc "contextless" (compositor: ^Compositor) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)compositor)
 }
-compositor_get_version :: #force_inline proc(compositor: ^Compositor) -> u32 {
+compositor_get_version :: #force_inline proc "contextless" (compositor: ^Compositor) -> u32 {
     return proxy_get_version(cast(^Proxy)compositor);
 }
 
@@ -1566,7 +1566,7 @@ COMPOSITOR_CREATE_REGION :: 1
  * create new surface
  * Ask the compositor to create a new surface.
  */
-compositor_create_surface :: #force_inline proc(
+compositor_create_surface :: #force_inline proc "contextless" (
     compositor: ^Compositor,
 ) -> ^Surface {
     return cast(^Surface)proxy_marshal_flags(
@@ -1583,7 +1583,7 @@ compositor_create_surface :: #force_inline proc(
  * create new region
  * Ask the compositor to create a new region.
  */
-compositor_create_region :: #force_inline proc(
+compositor_create_region :: #force_inline proc "contextless" (
     compositor: ^Compositor,
 ) -> ^Region {
     return cast(^Region)proxy_marshal_flags(
@@ -1598,16 +1598,16 @@ compositor_create_region :: #force_inline proc(
 
 
 
-shm_pool_set_user_data :: #force_inline proc(shm_pool: ^Shm_Pool, user_data: rawptr) {
+shm_pool_set_user_data :: #force_inline proc "contextless" (shm_pool: ^Shm_Pool, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)shm_pool,
         user_data
     )
 }
-shm_pool_get_user_data :: #force_inline proc(shm_pool: ^Shm_Pool) -> rawptr {
+shm_pool_get_user_data :: #force_inline proc "contextless" (shm_pool: ^Shm_Pool) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)shm_pool)
 }
-shm_pool_get_version :: #force_inline proc(shm_pool: ^Shm_Pool) -> u32 {
+shm_pool_get_version :: #force_inline proc "contextless" (shm_pool: ^Shm_Pool) -> u32 {
     return proxy_get_version(cast(^Proxy)shm_pool);
 }
 
@@ -1629,7 +1629,7 @@ SHM_POOL_RESIZE :: 2
  * so it is valid to destroy the pool immediately after creating
  * a buffer from it.
  */
-shm_pool_create_buffer :: #force_inline proc(
+shm_pool_create_buffer :: #force_inline proc "contextless" (
     shm_pool: ^Shm_Pool,
     /*
      * buffer byte offset within the pool
@@ -1675,7 +1675,7 @@ shm_pool_create_buffer :: #force_inline proc(
  * buffers that have been created from this pool
  * are gone.
  */
-shm_pool_destroy :: #force_inline proc(
+shm_pool_destroy :: #force_inline proc "contextless" (
     shm_pool: ^Shm_Pool,
 ) {
     proxy_marshal_flags(
@@ -1700,7 +1700,7 @@ shm_pool_destroy :: #force_inline proc(
  * responsibility to ensure that the file is at least as big as
  * the new pool size.
  */
-shm_pool_resize :: #force_inline proc(
+shm_pool_resize :: #force_inline proc "contextless" (
     shm_pool: ^Shm_Pool,
     /*
      * new size of the pool, in bytes
@@ -2218,7 +2218,7 @@ Shm_Listener :: struct{
      * can be used for buffers. Known formats include
      * argb8888 and xrgb8888.
      */
-    format: proc(
+    format: proc "c" (
         data: rawptr,
         shm: ^Shm,
         /*
@@ -2229,23 +2229,23 @@ Shm_Listener :: struct{
 
 }
 
-shm_add_listener :: #force_inline proc(shm: ^Shm, listener: ^Shm_Listener, data: rawptr) -> i32 {
+shm_add_listener :: #force_inline proc "contextless" (shm: ^Shm, listener: ^Shm_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)shm,
         rawptr(listener),
         data
     )
 }
-shm_set_user_data :: #force_inline proc(shm: ^Shm, user_data: rawptr) {
+shm_set_user_data :: #force_inline proc "contextless" (shm: ^Shm, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)shm,
         user_data
     )
 }
-shm_get_user_data :: #force_inline proc(shm: ^Shm) -> rawptr {
+shm_get_user_data :: #force_inline proc "contextless" (shm: ^Shm) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)shm)
 }
-shm_get_version :: #force_inline proc(shm: ^Shm) -> u32 {
+shm_get_version :: #force_inline proc "contextless" (shm: ^Shm) -> u32 {
     return proxy_get_version(cast(^Proxy)shm);
 }
 
@@ -2260,7 +2260,7 @@ SHM_RELEASE :: 1
  * objects.  The server will mmap size bytes of the passed file
  * descriptor, to use as backing memory for the pool.
  */
-shm_create_pool :: #force_inline proc(
+shm_create_pool :: #force_inline proc "contextless" (
     shm: ^Shm,
     /*
      * file descriptor for the pool
@@ -2290,7 +2290,7 @@ shm_create_pool :: #force_inline proc(
  * 
  * Objects created via this interface remain unaffected.
  */
-shm_release :: #force_inline proc(
+shm_release :: #force_inline proc "contextless" (
     shm: ^Shm,
 ) {
     proxy_marshal_flags(
@@ -2319,30 +2319,30 @@ Buffer_Listener :: struct{
      * wl_surface contents, e.g. as a GL texture. This is an important
      * optimization for GL(ES) compositors with wl_shm clients.
      */
-    release: proc(
+    release: proc "c" (
         data: rawptr,
         buffer: ^Buffer,
     ),
 
 }
 
-buffer_add_listener :: #force_inline proc(buffer: ^Buffer, listener: ^Buffer_Listener, data: rawptr) -> i32 {
+buffer_add_listener :: #force_inline proc "contextless" (buffer: ^Buffer, listener: ^Buffer_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)buffer,
         rawptr(listener),
         data
     )
 }
-buffer_set_user_data :: #force_inline proc(buffer: ^Buffer, user_data: rawptr) {
+buffer_set_user_data :: #force_inline proc "contextless" (buffer: ^Buffer, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)buffer,
         user_data
     )
 }
-buffer_get_user_data :: #force_inline proc(buffer: ^Buffer) -> rawptr {
+buffer_get_user_data :: #force_inline proc "contextless" (buffer: ^Buffer) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)buffer)
 }
-buffer_get_version :: #force_inline proc(buffer: ^Buffer) -> u32 {
+buffer_get_version :: #force_inline proc "contextless" (buffer: ^Buffer) -> u32 {
     return proxy_get_version(cast(^Proxy)buffer);
 }
 
@@ -2355,7 +2355,7 @@ BUFFER_DESTROY :: 0
  * 
  * For possible side-effects to a surface, see wl_surface.attach.
  */
-buffer_destroy :: #force_inline proc(
+buffer_destroy :: #force_inline proc "contextless" (
     buffer: ^Buffer,
 ) {
     proxy_marshal_flags(
@@ -2393,7 +2393,7 @@ Data_Offer_Listener :: struct{
      * Sent immediately after creating the wl_data_offer object.  One
      * event per offered mime type.
      */
-    offer: proc(
+    offer: proc "c" (
         data: rawptr,
         data_offer: ^Data_Offer,
         /*
@@ -2409,7 +2409,7 @@ Data_Offer_Listener :: struct{
      * or anytime the source side changes its offered actions through
      * wl_data_source.set_actions.
      */
-    source_actions: proc(
+    source_actions: proc "c" (
         data: rawptr,
         data_offer: ^Data_Offer,
         /*
@@ -2456,7 +2456,7 @@ Data_Offer_Listener :: struct{
      * final wl_data_offer.set_actions and wl_data_offer.accept requests
      * must happen before the call to wl_data_offer.finish.
      */
-    action: proc(
+    action: proc "c" (
         data: rawptr,
         data_offer: ^Data_Offer,
         /*
@@ -2467,23 +2467,23 @@ Data_Offer_Listener :: struct{
 
 }
 
-data_offer_add_listener :: #force_inline proc(data_offer: ^Data_Offer, listener: ^Data_Offer_Listener, data: rawptr) -> i32 {
+data_offer_add_listener :: #force_inline proc "contextless" (data_offer: ^Data_Offer, listener: ^Data_Offer_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)data_offer,
         rawptr(listener),
         data
     )
 }
-data_offer_set_user_data :: #force_inline proc(data_offer: ^Data_Offer, user_data: rawptr) {
+data_offer_set_user_data :: #force_inline proc "contextless" (data_offer: ^Data_Offer, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)data_offer,
         user_data
     )
 }
-data_offer_get_user_data :: #force_inline proc(data_offer: ^Data_Offer) -> rawptr {
+data_offer_get_user_data :: #force_inline proc "contextless" (data_offer: ^Data_Offer) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)data_offer)
 }
-data_offer_get_version :: #force_inline proc(data_offer: ^Data_Offer) -> u32 {
+data_offer_get_version :: #force_inline proc "contextless" (data_offer: ^Data_Offer) -> u32 {
     return proxy_get_version(cast(^Proxy)data_offer);
 }
 
@@ -2510,7 +2510,7 @@ DATA_OFFER_SET_ACTIONS :: 4
  * wl_data_source.cancelled. Clients may still use this event in
  * conjunction with wl_data_source.action for feedback.
  */
-data_offer_accept :: #force_inline proc(
+data_offer_accept :: #force_inline proc "contextless" (
     data_offer: ^Data_Offer,
     /*
      * serial number of the accept request
@@ -2550,7 +2550,7 @@ data_offer_accept :: #force_inline proc(
  * clients may preemptively fetch data or examine it more closely to
  * determine acceptance.
  */
-data_offer_receive :: #force_inline proc(
+data_offer_receive :: #force_inline proc "contextless" (
     data_offer: ^Data_Offer,
     /*
      * mime type desired by receiver
@@ -2576,7 +2576,7 @@ data_offer_receive :: #force_inline proc(
  * destroy data offer
  * Destroy the data offer.
  */
-data_offer_destroy :: #force_inline proc(
+data_offer_destroy :: #force_inline proc "contextless" (
     data_offer: ^Data_Offer,
 ) {
     proxy_marshal_flags(
@@ -2605,7 +2605,7 @@ data_offer_destroy :: #force_inline proc(
  * If wl_data_offer.finish request is received for a non drag and drop
  * operation, the invalid_finish protocol error is raised.
  */
-data_offer_finish :: #force_inline proc(
+data_offer_finish :: #force_inline proc "contextless" (
     data_offer: ^Data_Offer,
 ) {
     proxy_marshal_flags(
@@ -2651,7 +2651,7 @@ data_offer_finish :: #force_inline proc(
  * This request can only be made on drag-and-drop offers, a protocol error
  * will be raised otherwise.
  */
-data_offer_set_actions :: #force_inline proc(
+data_offer_set_actions :: #force_inline proc "contextless" (
     data_offer: ^Data_Offer,
     /*
      * actions supported by the destination client
@@ -2693,7 +2693,7 @@ Data_Source_Listener :: struct{
      * 
      * Used for feedback during drag-and-drop.
      */
-    target: proc(
+    target: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
         /*
@@ -2708,7 +2708,7 @@ Data_Source_Listener :: struct{
      * specified mime type over the passed file descriptor, then
      * close it.
      */
-    send: proc(
+    send: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
         /*
@@ -2744,7 +2744,7 @@ Data_Source_Listener :: struct{
      * only be emitted if the data source was replaced by another data
      * source.
      */
-    cancelled: proc(
+    cancelled: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
     ),
@@ -2761,7 +2761,7 @@ Data_Source_Listener :: struct{
      * Note that the data_source may still be used in the future and should
      * not be destroyed here.
      */
-    dnd_drop_performed: proc(
+    dnd_drop_performed: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
     ),
@@ -2775,7 +2775,7 @@ Data_Source_Listener :: struct{
      * If the action used to perform the operation was "move", the
      * source can now delete the transferred data.
      */
-    dnd_finished: proc(
+    dnd_finished: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
     ),
@@ -2808,7 +2808,7 @@ Data_Source_Listener :: struct{
      * Clients can trigger cursor surface changes from this point, so
      * they reflect the current action.
      */
-    action: proc(
+    action: proc "c" (
         data: rawptr,
         data_source: ^Data_Source,
         /*
@@ -2819,23 +2819,23 @@ Data_Source_Listener :: struct{
 
 }
 
-data_source_add_listener :: #force_inline proc(data_source: ^Data_Source, listener: ^Data_Source_Listener, data: rawptr) -> i32 {
+data_source_add_listener :: #force_inline proc "contextless" (data_source: ^Data_Source, listener: ^Data_Source_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)data_source,
         rawptr(listener),
         data
     )
 }
-data_source_set_user_data :: #force_inline proc(data_source: ^Data_Source, user_data: rawptr) {
+data_source_set_user_data :: #force_inline proc "contextless" (data_source: ^Data_Source, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)data_source,
         user_data
     )
 }
-data_source_get_user_data :: #force_inline proc(data_source: ^Data_Source) -> rawptr {
+data_source_get_user_data :: #force_inline proc "contextless" (data_source: ^Data_Source) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)data_source)
 }
-data_source_get_version :: #force_inline proc(data_source: ^Data_Source) -> u32 {
+data_source_get_version :: #force_inline proc "contextless" (data_source: ^Data_Source) -> u32 {
     return proxy_get_version(cast(^Proxy)data_source);
 }
 
@@ -2849,7 +2849,7 @@ DATA_SOURCE_SET_ACTIONS :: 2
  * advertised to targets.  Can be called several times to offer
  * multiple types.
  */
-data_source_offer :: #force_inline proc(
+data_source_offer :: #force_inline proc "contextless" (
     data_source: ^Data_Source,
     /*
      * mime type offered by the data source
@@ -2870,7 +2870,7 @@ data_source_offer :: #force_inline proc(
  * destroy the data source
  * Destroy the data source.
  */
-data_source_destroy :: #force_inline proc(
+data_source_destroy :: #force_inline proc "contextless" (
     data_source: ^Data_Source,
 ) {
     proxy_marshal_flags(
@@ -2898,7 +2898,7 @@ data_source_destroy :: #force_inline proc(
  * wl_data_device.start_drag. Attempting to use the source other than
  * for drag-and-drop will raise a protocol error.
  */
-data_source_set_actions :: #force_inline proc(
+data_source_set_actions :: #force_inline proc "contextless" (
     data_source: ^Data_Source,
     /*
      * actions supported by the data source
@@ -2938,7 +2938,7 @@ Data_Device_Listener :: struct{
      * object will send out data_offer.offer events to describe the
      * mime types it offers.
      */
-    data_offer: proc(
+    data_offer: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
         /*
@@ -2954,7 +2954,7 @@ Data_Device_Listener :: struct{
      * enter time is provided by the x and y arguments, in surface-local
      * coordinates.
      */
-    enter: proc(
+    enter: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
         /*
@@ -2985,7 +2985,7 @@ Data_Device_Listener :: struct{
      * surface and the session ends.  The client must destroy the
      * wl_data_offer introduced at enter time at this point.
      */
-    leave: proc(
+    leave: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
     ),
@@ -2997,7 +2997,7 @@ Data_Device_Listener :: struct{
      * is provided by the x and y arguments, in surface-local
      * coordinates.
      */
-    motion: proc(
+    motion: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
         /*
@@ -3030,7 +3030,7 @@ Data_Device_Listener :: struct{
      * wl_data_offer.set_actions request, or wl_data_offer.destroy in order
      * to cancel the operation.
      */
-    drop: proc(
+    drop: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
     ),
@@ -3050,7 +3050,7 @@ Data_Device_Listener :: struct{
      * will be sent.  The client must destroy the previous selection
      * data_offer, if any, upon receiving this event.
      */
-    selection: proc(
+    selection: proc "c" (
         data: rawptr,
         data_device: ^Data_Device,
         /*
@@ -3061,23 +3061,23 @@ Data_Device_Listener :: struct{
 
 }
 
-data_device_add_listener :: #force_inline proc(data_device: ^Data_Device, listener: ^Data_Device_Listener, data: rawptr) -> i32 {
+data_device_add_listener :: #force_inline proc "contextless" (data_device: ^Data_Device, listener: ^Data_Device_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)data_device,
         rawptr(listener),
         data
     )
 }
-data_device_set_user_data :: #force_inline proc(data_device: ^Data_Device, user_data: rawptr) {
+data_device_set_user_data :: #force_inline proc "contextless" (data_device: ^Data_Device, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)data_device,
         user_data
     )
 }
-data_device_get_user_data :: #force_inline proc(data_device: ^Data_Device) -> rawptr {
+data_device_get_user_data :: #force_inline proc "contextless" (data_device: ^Data_Device) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)data_device)
 }
-data_device_get_version :: #force_inline proc(data_device: ^Data_Device) -> u32 {
+data_device_get_version :: #force_inline proc "contextless" (data_device: ^Data_Device) -> u32 {
     return proxy_get_version(cast(^Proxy)data_device);
 }
 
@@ -3117,7 +3117,7 @@ DATA_DEVICE_RELEASE :: 2
  * start_drag requests. Attempting to reuse a previously-used source
  * may send a used_source error.
  */
-data_device_start_drag :: #force_inline proc(
+data_device_start_drag :: #force_inline proc "contextless" (
     data_device: ^Data_Device,
     /*
      * data source for the eventual transfer
@@ -3160,7 +3160,7 @@ data_device_start_drag :: #force_inline proc(
  * start_drag requests. Attempting to reuse a previously-used source
  * may send a used_source error.
  */
-data_device_set_selection :: #force_inline proc(
+data_device_set_selection :: #force_inline proc "contextless" (
     data_device: ^Data_Device,
     /*
      * data source for the selection
@@ -3186,7 +3186,7 @@ data_device_set_selection :: #force_inline proc(
  * destroy data device
  * This request destroys the data device.
  */
-data_device_release :: #force_inline proc(
+data_device_release :: #force_inline proc "contextless" (
     data_device: ^Data_Device,
 ) {
     proxy_marshal_flags(
@@ -3246,16 +3246,16 @@ Data_Device_Manager_Dnd_Action_Flag :: enum {
 Data_Device_Manager_Dnd_Action_Flags :: bit_set[Data_Device_Manager_Dnd_Action_Flag]
 
 
-data_device_manager_set_user_data :: #force_inline proc(data_device_manager: ^Data_Device_Manager, user_data: rawptr) {
+data_device_manager_set_user_data :: #force_inline proc "contextless" (data_device_manager: ^Data_Device_Manager, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)data_device_manager,
         user_data
     )
 }
-data_device_manager_get_user_data :: #force_inline proc(data_device_manager: ^Data_Device_Manager) -> rawptr {
+data_device_manager_get_user_data :: #force_inline proc "contextless" (data_device_manager: ^Data_Device_Manager) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)data_device_manager)
 }
-data_device_manager_get_version :: #force_inline proc(data_device_manager: ^Data_Device_Manager) -> u32 {
+data_device_manager_get_version :: #force_inline proc "contextless" (data_device_manager: ^Data_Device_Manager) -> u32 {
     return proxy_get_version(cast(^Proxy)data_device_manager);
 }
 
@@ -3266,7 +3266,7 @@ DATA_DEVICE_MANAGER_GET_DATA_DEVICE :: 1
  * create a new data source
  * Create a new data source.
  */
-data_device_manager_create_data_source :: #force_inline proc(
+data_device_manager_create_data_source :: #force_inline proc "contextless" (
     data_device_manager: ^Data_Device_Manager,
 ) -> ^Data_Source {
     return cast(^Data_Source)proxy_marshal_flags(
@@ -3283,7 +3283,7 @@ data_device_manager_create_data_source :: #force_inline proc(
  * create a new data device
  * Create a new data device for a given seat.
  */
-data_device_manager_get_data_device :: #force_inline proc(
+data_device_manager_get_data_device :: #force_inline proc "contextless" (
     data_device_manager: ^Data_Device_Manager,
     /*
      * seat associated with the data device
@@ -3310,16 +3310,16 @@ Shell_Error :: enum {
 }
 
 
-shell_set_user_data :: #force_inline proc(shell: ^Shell, user_data: rawptr) {
+shell_set_user_data :: #force_inline proc "contextless" (shell: ^Shell, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)shell,
         user_data
     )
 }
-shell_get_user_data :: #force_inline proc(shell: ^Shell) -> rawptr {
+shell_get_user_data :: #force_inline proc "contextless" (shell: ^Shell) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)shell)
 }
-shell_get_version :: #force_inline proc(shell: ^Shell) -> u32 {
+shell_get_version :: #force_inline proc "contextless" (shell: ^Shell) -> u32 {
     return proxy_get_version(cast(^Proxy)shell);
 }
 
@@ -3333,7 +3333,7 @@ SHELL_GET_SHELL_SURFACE :: 0
  * 
  * Only one shell surface can be associated with a given surface.
  */
-shell_get_shell_surface :: #force_inline proc(
+shell_get_shell_surface :: #force_inline proc "contextless" (
     shell: ^Shell,
     /*
      * surface to be given the shell surface role
@@ -3443,7 +3443,7 @@ Shell_Surface_Listener :: struct{
      * Ping a client to check if it is receiving events and sending
      * requests. A client is expected to reply with a pong request.
      */
-    ping: proc(
+    ping: proc "c" (
         data: rawptr,
         shell_surface: ^Shell_Surface,
         /*
@@ -3472,7 +3472,7 @@ Shell_Surface_Listener :: struct{
      * The width and height arguments specify the size of the window
      * in surface-local coordinates.
      */
-    configure: proc(
+    configure: proc "c" (
         data: rawptr,
         shell_surface: ^Shell_Surface,
         /*
@@ -3495,30 +3495,30 @@ Shell_Surface_Listener :: struct{
      * that is, when the user clicks a surface that doesn't belong
      * to the client owning the popup surface.
      */
-    popup_done: proc(
+    popup_done: proc "c" (
         data: rawptr,
         shell_surface: ^Shell_Surface,
     ),
 
 }
 
-shell_surface_add_listener :: #force_inline proc(shell_surface: ^Shell_Surface, listener: ^Shell_Surface_Listener, data: rawptr) -> i32 {
+shell_surface_add_listener :: #force_inline proc "contextless" (shell_surface: ^Shell_Surface, listener: ^Shell_Surface_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)shell_surface,
         rawptr(listener),
         data
     )
 }
-shell_surface_set_user_data :: #force_inline proc(shell_surface: ^Shell_Surface, user_data: rawptr) {
+shell_surface_set_user_data :: #force_inline proc "contextless" (shell_surface: ^Shell_Surface, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)shell_surface,
         user_data
     )
 }
-shell_surface_get_user_data :: #force_inline proc(shell_surface: ^Shell_Surface) -> rawptr {
+shell_surface_get_user_data :: #force_inline proc "contextless" (shell_surface: ^Shell_Surface) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)shell_surface)
 }
-shell_surface_get_version :: #force_inline proc(shell_surface: ^Shell_Surface) -> u32 {
+shell_surface_get_version :: #force_inline proc "contextless" (shell_surface: ^Shell_Surface) -> u32 {
     return proxy_get_version(cast(^Proxy)shell_surface);
 }
 
@@ -3538,7 +3538,7 @@ SHELL_SURFACE_SET_CLASS :: 9
  * A client must respond to a ping event with a pong request or
  * the client may be deemed unresponsive.
  */
-shell_surface_pong :: #force_inline proc(
+shell_surface_pong :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * serial number of the ping event
@@ -3563,7 +3563,7 @@ shell_surface_pong :: #force_inline proc(
  * The server may ignore move requests depending on the state of
  * the surface (e.g. fullscreen or maximized).
  */
-shell_surface_move :: #force_inline proc(
+shell_surface_move :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * seat whose pointer is used
@@ -3593,7 +3593,7 @@ shell_surface_move :: #force_inline proc(
  * The server may ignore resize requests depending on the state of
  * the surface (e.g. fullscreen or maximized).
  */
-shell_surface_resize :: #force_inline proc(
+shell_surface_resize :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * seat whose pointer is used
@@ -3626,7 +3626,7 @@ shell_surface_resize :: #force_inline proc(
  * 
  * A toplevel surface is not fullscreen, maximized or transient.
  */
-shell_surface_set_toplevel :: #force_inline proc(
+shell_surface_set_toplevel :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
 ) {
     proxy_marshal_flags(
@@ -3648,7 +3648,7 @@ shell_surface_set_toplevel :: #force_inline proc(
  * 
  * The flags argument controls details of the transient behaviour.
  */
-shell_surface_set_transient :: #force_inline proc(
+shell_surface_set_transient :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * parent surface
@@ -3716,7 +3716,7 @@ shell_surface_set_transient :: #force_inline proc(
  * with the dimensions for the output on which the surface will
  * be made fullscreen.
  */
-shell_surface_set_fullscreen :: #force_inline proc(
+shell_surface_set_fullscreen :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * method for resolving size conflict
@@ -3765,7 +3765,7 @@ shell_surface_set_fullscreen :: #force_inline proc(
  * corner of the surface relative to the upper left corner of the
  * parent surface, in surface-local coordinates.
  */
-shell_surface_set_popup :: #force_inline proc(
+shell_surface_set_popup :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * seat whose pointer is used
@@ -3828,7 +3828,7 @@ shell_surface_set_popup :: #force_inline proc(
  * 
  * The details depend on the compositor implementation.
  */
-shell_surface_set_maximized :: #force_inline proc(
+shell_surface_set_maximized :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * output on which the surface is to be maximized
@@ -3855,7 +3855,7 @@ shell_surface_set_maximized :: #force_inline proc(
  * 
  * The string must be encoded in UTF-8.
  */
-shell_surface_set_title :: #force_inline proc(
+shell_surface_set_title :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * surface title
@@ -3881,7 +3881,7 @@ shell_surface_set_title :: #force_inline proc(
  * file name (or the full path if it is a non-standard location) of
  * the application's .desktop file as the class.
  */
-shell_surface_set_class :: #force_inline proc(
+shell_surface_set_class :: #force_inline proc "contextless" (
     shell_surface: ^Shell_Surface,
     /*
      * surface class
@@ -3935,7 +3935,7 @@ Surface_Listener :: struct{
      * 
      * Note that a surface may be overlapping with zero or more outputs.
      */
-    enter: proc(
+    enter: proc "c" (
         data: rawptr,
         surface: ^Surface,
         /*
@@ -3956,7 +3956,7 @@ Surface_Listener :: struct{
      * updates even if no enter event has been sent. The frame event should be
      * used instead.
      */
-    leave: proc(
+    leave: proc "c" (
         data: rawptr,
         surface: ^Surface,
         /*
@@ -3980,7 +3980,7 @@ Surface_Listener :: struct{
      * 
      * The compositor shall emit a scale value greater than 0.
      */
-    preferred_buffer_scale: proc(
+    preferred_buffer_scale: proc "c" (
         data: rawptr,
         surface: ^Surface,
         /*
@@ -4001,7 +4001,7 @@ Surface_Listener :: struct{
      * wl_surface.set_buffer_transform might allow the compositor to use the
      * surface buffer more efficiently.
      */
-    preferred_buffer_transform: proc(
+    preferred_buffer_transform: proc "c" (
         data: rawptr,
         surface: ^Surface,
         /*
@@ -4012,23 +4012,23 @@ Surface_Listener :: struct{
 
 }
 
-surface_add_listener :: #force_inline proc(surface: ^Surface, listener: ^Surface_Listener, data: rawptr) -> i32 {
+surface_add_listener :: #force_inline proc "contextless" (surface: ^Surface, listener: ^Surface_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)surface,
         rawptr(listener),
         data
     )
 }
-surface_set_user_data :: #force_inline proc(surface: ^Surface, user_data: rawptr) {
+surface_set_user_data :: #force_inline proc "contextless" (surface: ^Surface, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)surface,
         user_data
     )
 }
-surface_get_user_data :: #force_inline proc(surface: ^Surface) -> rawptr {
+surface_get_user_data :: #force_inline proc "contextless" (surface: ^Surface) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)surface)
 }
-surface_get_version :: #force_inline proc(surface: ^Surface) -> u32 {
+surface_get_version :: #force_inline proc "contextless" (surface: ^Surface) -> u32 {
     return proxy_get_version(cast(^Proxy)surface);
 }
 
@@ -4048,7 +4048,7 @@ SURFACE_OFFSET :: 10
  * delete surface
  * Deletes the surface and invalidates its object ID.
  */
-surface_destroy :: #force_inline proc(
+surface_destroy :: #force_inline proc "contextless" (
     surface: ^Surface,
 ) {
     proxy_marshal_flags(
@@ -4127,7 +4127,7 @@ surface_destroy :: #force_inline proc(
  * ensure that they explicitly remove content from surfaces, even after
  * destroying buffers.
  */
-surface_attach :: #force_inline proc(
+surface_attach :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * buffer of surface contents
@@ -4178,7 +4178,7 @@ surface_attach :: #force_inline proc(
  * posted with wl_surface.damage_buffer which uses buffer coordinates
  * instead of surface coordinates.
  */
-surface_damage :: #force_inline proc(
+surface_damage :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * surface-local x coordinate
@@ -4245,7 +4245,7 @@ surface_damage :: #force_inline proc(
  * The callback_data passed in the callback is the current time, in
  * milliseconds, with an undefined base.
  */
-surface_frame :: #force_inline proc(
+surface_frame :: #force_inline proc "contextless" (
     surface: ^Surface,
 ) -> ^Callback {
     return cast(^Callback)proxy_marshal_flags(
@@ -4285,7 +4285,7 @@ surface_frame :: #force_inline proc(
  * destroyed immediately. A NULL wl_region causes the pending opaque
  * region to be set to empty.
  */
-surface_set_opaque_region :: #force_inline proc(
+surface_set_opaque_region :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * opaque region of the surface
@@ -4327,7 +4327,7 @@ surface_set_opaque_region :: #force_inline proc(
  * immediately. A NULL wl_region causes the input region to be set
  * to infinite.
  */
-surface_set_input_region :: #force_inline proc(
+surface_set_input_region :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * input region of the surface
@@ -4366,7 +4366,7 @@ surface_set_input_region :: #force_inline proc(
  * 
  * Other interfaces may add further double-buffered surface state.
  */
-surface_commit :: #force_inline proc(
+surface_commit :: #force_inline proc "contextless" (
     surface: ^Surface,
 ) {
     proxy_marshal_flags(
@@ -4412,7 +4412,7 @@ surface_commit :: #force_inline proc(
  * wl_output.transform enum the invalid_transform protocol error
  * is raised.
  */
-surface_set_buffer_transform :: #force_inline proc(
+surface_set_buffer_transform :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * transform for interpreting buffer contents
@@ -4455,7 +4455,7 @@ surface_set_buffer_transform :: #force_inline proc(
  * If scale is not greater than 0 the invalid_scale protocol error is
  * raised.
  */
-surface_set_buffer_scale :: #force_inline proc(
+surface_set_buffer_scale :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * scale for interpreting buffer contents
@@ -4507,7 +4507,7 @@ surface_set_buffer_scale :: #force_inline proc(
  * two requests separately and only transform from one to the other
  * after receiving the wl_surface.commit.
  */
-surface_damage_buffer :: #force_inline proc(
+surface_damage_buffer :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * buffer-local x coordinate
@@ -4557,7 +4557,7 @@ surface_damage_buffer :: #force_inline proc(
  * arguments in the wl_surface.attach request in wl_surface versions prior
  * to 5. See wl_surface.attach for details.
  */
-surface_offset :: #force_inline proc(
+surface_offset :: #force_inline proc "contextless" (
     surface: ^Surface,
     /*
      * surface-local x coordinate
@@ -4640,7 +4640,7 @@ Seat_Listener :: struct{
      * The above behavior also applies to wl_keyboard and wl_touch with the
      * keyboard and touch capabilities, respectively.
      */
-    capabilities: proc(
+    capabilities: proc "c" (
         data: rawptr,
         seat: ^Seat,
         /*
@@ -4668,7 +4668,7 @@ Seat_Listener :: struct{
      * Compositors may re-use the same seat name if the wl_seat global is
      * destroyed and re-created later.
      */
-    name: proc(
+    name: proc "c" (
         data: rawptr,
         seat: ^Seat,
         /*
@@ -4679,23 +4679,23 @@ Seat_Listener :: struct{
 
 }
 
-seat_add_listener :: #force_inline proc(seat: ^Seat, listener: ^Seat_Listener, data: rawptr) -> i32 {
+seat_add_listener :: #force_inline proc "contextless" (seat: ^Seat, listener: ^Seat_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)seat,
         rawptr(listener),
         data
     )
 }
-seat_set_user_data :: #force_inline proc(seat: ^Seat, user_data: rawptr) {
+seat_set_user_data :: #force_inline proc "contextless" (seat: ^Seat, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)seat,
         user_data
     )
 }
-seat_get_user_data :: #force_inline proc(seat: ^Seat) -> rawptr {
+seat_get_user_data :: #force_inline proc "contextless" (seat: ^Seat) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)seat)
 }
-seat_get_version :: #force_inline proc(seat: ^Seat) -> u32 {
+seat_get_version :: #force_inline proc "contextless" (seat: ^Seat) -> u32 {
     return proxy_get_version(cast(^Proxy)seat);
 }
 
@@ -4715,7 +4715,7 @@ SEAT_RELEASE :: 3
  * never had the pointer capability. The missing_capability error will
  * be sent in this case.
  */
-seat_get_pointer :: #force_inline proc(
+seat_get_pointer :: #force_inline proc "contextless" (
     seat: ^Seat,
 ) -> ^Pointer {
     return cast(^Pointer)proxy_marshal_flags(
@@ -4739,7 +4739,7 @@ seat_get_pointer :: #force_inline proc(
  * never had the keyboard capability. The missing_capability error will
  * be sent in this case.
  */
-seat_get_keyboard :: #force_inline proc(
+seat_get_keyboard :: #force_inline proc "contextless" (
     seat: ^Seat,
 ) -> ^Keyboard {
     return cast(^Keyboard)proxy_marshal_flags(
@@ -4763,7 +4763,7 @@ seat_get_keyboard :: #force_inline proc(
  * never had the touch capability. The missing_capability error will
  * be sent in this case.
  */
-seat_get_touch :: #force_inline proc(
+seat_get_touch :: #force_inline proc "contextless" (
     seat: ^Seat,
 ) -> ^Touch {
     return cast(^Touch)proxy_marshal_flags(
@@ -4781,7 +4781,7 @@ seat_get_touch :: #force_inline proc(
  * Using this request a client can tell the server that it is not going to
  * use the seat object anymore.
  */
-seat_release :: #force_inline proc(
+seat_release :: #force_inline proc "contextless" (
     seat: ^Seat,
 ) {
     proxy_marshal_flags(
@@ -4896,7 +4896,7 @@ Pointer_Listener :: struct{
      * is undefined and a client should respond to this event by setting
      * an appropriate pointer image with the set_cursor request.
      */
-    enter: proc(
+    enter: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -4925,7 +4925,7 @@ Pointer_Listener :: struct{
      * The leave notification is sent before the enter notification
      * for the new focus.
      */
-    leave: proc(
+    leave: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -4944,7 +4944,7 @@ Pointer_Listener :: struct{
      * surface_x and surface_y are the location relative to the
      * focused surface.
      */
-    motion: proc(
+    motion: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -4978,7 +4978,7 @@ Pointer_Listener :: struct{
      * currently undefined but may be used in future versions of this
      * protocol.
      */
-    button: proc(
+    button: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5018,7 +5018,7 @@ Pointer_Listener :: struct{
      * When applicable, a client can transform its content relative to the
      * scroll distance.
      */
-    axis: proc(
+    axis: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5072,7 +5072,7 @@ Pointer_Listener :: struct{
      * wl_pointer.enter event being split across multiple wl_pointer.frame
      * groups.
      */
-    frame: proc(
+    frame: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
     ),
@@ -5105,7 +5105,7 @@ Pointer_Listener :: struct{
      * The order of wl_pointer.axis_discrete and wl_pointer.axis_source is
      * not guaranteed.
      */
-    axis_source: proc(
+    axis_source: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5131,7 +5131,7 @@ Pointer_Listener :: struct{
      * wl_pointer.axis event. The timestamp value may be the same as a
      * preceding wl_pointer.axis event.
      */
-    axis_stop: proc(
+    axis_stop: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5177,7 +5177,7 @@ Pointer_Listener :: struct{
      * The order of wl_pointer.axis_discrete and wl_pointer.axis_source is
      * not guaranteed.
      */
-    axis_discrete: proc(
+    axis_discrete: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5214,7 +5214,7 @@ Pointer_Listener :: struct{
      * The order of wl_pointer.axis_value120 and wl_pointer.axis_source is
      * not guaranteed.
      */
-    axis_value120: proc(
+    axis_value120: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5265,7 +5265,7 @@ Pointer_Listener :: struct{
      * wl_pointer.axis_discrete and wl_pointer.axis_source is not
      * guaranteed.
      */
-    axis_relative_direction: proc(
+    axis_relative_direction: proc "c" (
         data: rawptr,
         pointer: ^Pointer,
         /*
@@ -5280,23 +5280,23 @@ Pointer_Listener :: struct{
 
 }
 
-pointer_add_listener :: #force_inline proc(pointer: ^Pointer, listener: ^Pointer_Listener, data: rawptr) -> i32 {
+pointer_add_listener :: #force_inline proc "contextless" (pointer: ^Pointer, listener: ^Pointer_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)pointer,
         rawptr(listener),
         data
     )
 }
-pointer_set_user_data :: #force_inline proc(pointer: ^Pointer, user_data: rawptr) {
+pointer_set_user_data :: #force_inline proc "contextless" (pointer: ^Pointer, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)pointer,
         user_data
     )
 }
-pointer_get_user_data :: #force_inline proc(pointer: ^Pointer) -> rawptr {
+pointer_get_user_data :: #force_inline proc "contextless" (pointer: ^Pointer) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)pointer)
 }
-pointer_get_version :: #force_inline proc(pointer: ^Pointer) -> u32 {
+pointer_get_version :: #force_inline proc "contextless" (pointer: ^Pointer) -> u32 {
     return proxy_get_version(cast(^Proxy)pointer);
 }
 
@@ -5339,7 +5339,7 @@ POINTER_RELEASE :: 1
  * serial number sent to the client. Otherwise the request will be
  * ignored.
  */
-pointer_set_cursor :: #force_inline proc(
+pointer_set_cursor :: #force_inline proc "contextless" (
     pointer: ^Pointer,
     /*
      * serial number of the enter event
@@ -5379,7 +5379,7 @@ pointer_set_cursor :: #force_inline proc(
  * This request destroys the pointer proxy object, so clients must not call
  * wl_pointer_destroy() after using this request.
  */
-pointer_release :: #force_inline proc(
+pointer_release :: #force_inline proc "contextless" (
     pointer: ^Pointer,
 ) {
     proxy_marshal_flags(
@@ -5445,7 +5445,7 @@ Keyboard_Listener :: struct{
      * From version 7 onwards, the fd must be mapped with MAP_PRIVATE by
      * the recipient, as MAP_SHARED may fail.
      */
-    keymap: proc(
+    keymap: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5478,7 +5478,7 @@ Keyboard_Listener :: struct{
      * Clients should not use the list of pressed keys to emulate key-press
      * events. The order of keys in the list is unspecified.
      */
-    enter: proc(
+    enter: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5508,7 +5508,7 @@ Keyboard_Listener :: struct{
      * of the wl_keyboard was not equal to the surface argument immediately
      * before this event.
      */
-    leave: proc(
+    leave: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5547,7 +5547,7 @@ Keyboard_Listener :: struct{
      * 0 has been received. This allows the compositor to take over the
      * responsibility of key repetition.
      */
-    key: proc(
+    key: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5584,7 +5584,7 @@ Keyboard_Listener :: struct{
      * In the wl_keyboard logical state, this event updates the modifiers and
      * group.
      */
-    modifiers: proc(
+    modifiers: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5624,7 +5624,7 @@ Keyboard_Listener :: struct{
      * so clients should continue listening for the event past the creation
      * of wl_keyboard.
      */
-    repeat_info: proc(
+    repeat_info: proc "c" (
         data: rawptr,
         keyboard: ^Keyboard,
         /*
@@ -5639,23 +5639,23 @@ Keyboard_Listener :: struct{
 
 }
 
-keyboard_add_listener :: #force_inline proc(keyboard: ^Keyboard, listener: ^Keyboard_Listener, data: rawptr) -> i32 {
+keyboard_add_listener :: #force_inline proc "contextless" (keyboard: ^Keyboard, listener: ^Keyboard_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)keyboard,
         rawptr(listener),
         data
     )
 }
-keyboard_set_user_data :: #force_inline proc(keyboard: ^Keyboard, user_data: rawptr) {
+keyboard_set_user_data :: #force_inline proc "contextless" (keyboard: ^Keyboard, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)keyboard,
         user_data
     )
 }
-keyboard_get_user_data :: #force_inline proc(keyboard: ^Keyboard) -> rawptr {
+keyboard_get_user_data :: #force_inline proc "contextless" (keyboard: ^Keyboard) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)keyboard)
 }
-keyboard_get_version :: #force_inline proc(keyboard: ^Keyboard) -> u32 {
+keyboard_get_version :: #force_inline proc "contextless" (keyboard: ^Keyboard) -> u32 {
     return proxy_get_version(cast(^Proxy)keyboard);
 }
 
@@ -5664,7 +5664,7 @@ KEYBOARD_RELEASE :: 0
 /*
  * release the keyboard object
  */
-keyboard_release :: #force_inline proc(
+keyboard_release :: #force_inline proc "contextless" (
     keyboard: ^Keyboard,
 ) {
     proxy_marshal_flags(
@@ -5685,7 +5685,7 @@ Touch_Listener :: struct{
      * this ID. The ID ceases to be valid after a touch up event and may be
      * reused in the future.
      */
-    down: proc(
+    down: proc "c" (
         data: rawptr,
         touch: ^Touch,
         /*
@@ -5720,7 +5720,7 @@ Touch_Listener :: struct{
      * this touch point and the touch point's ID is released and may be
      * reused in a future touch down event.
      */
-    up: proc(
+    up: proc "c" (
         data: rawptr,
         touch: ^Touch,
         /*
@@ -5741,7 +5741,7 @@ Touch_Listener :: struct{
      * update of touch point coordinates
      * A touch point has changed coordinates.
      */
-    motion: proc(
+    motion: proc "c" (
         data: rawptr,
         touch: ^Touch,
         /*
@@ -5773,7 +5773,7 @@ Touch_Listener :: struct{
      * must assume that any state not updated in a frame is unchanged from the
      * previously known state.
      */
-    frame: proc(
+    frame: proc "c" (
         data: rawptr,
         touch: ^Touch,
     ),
@@ -5789,7 +5789,7 @@ Touch_Listener :: struct{
      * 
      * No frame event is required after the cancel event.
      */
-    cancel: proc(
+    cancel: proc "c" (
         data: rawptr,
         touch: ^Touch,
     ),
@@ -5822,7 +5822,7 @@ Touch_Listener :: struct{
      * shape reports. The client has to make reasonable assumptions about the
      * shape if it did not receive this event.
      */
-    shape: proc(
+    shape: proc "c" (
         data: rawptr,
         touch: ^Touch,
         /*
@@ -5865,7 +5865,7 @@ Touch_Listener :: struct{
      * This event is only sent by the compositor if the touch device supports
      * orientation reports.
      */
-    orientation: proc(
+    orientation: proc "c" (
         data: rawptr,
         touch: ^Touch,
         /*
@@ -5880,23 +5880,23 @@ Touch_Listener :: struct{
 
 }
 
-touch_add_listener :: #force_inline proc(touch: ^Touch, listener: ^Touch_Listener, data: rawptr) -> i32 {
+touch_add_listener :: #force_inline proc "contextless" (touch: ^Touch, listener: ^Touch_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)touch,
         rawptr(listener),
         data
     )
 }
-touch_set_user_data :: #force_inline proc(touch: ^Touch, user_data: rawptr) {
+touch_set_user_data :: #force_inline proc "contextless" (touch: ^Touch, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)touch,
         user_data
     )
 }
-touch_get_user_data :: #force_inline proc(touch: ^Touch) -> rawptr {
+touch_get_user_data :: #force_inline proc "contextless" (touch: ^Touch) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)touch)
 }
-touch_get_version :: #force_inline proc(touch: ^Touch) -> u32 {
+touch_get_version :: #force_inline proc "contextless" (touch: ^Touch) -> u32 {
     return proxy_get_version(cast(^Proxy)touch);
 }
 
@@ -5905,7 +5905,7 @@ TOUCH_RELEASE :: 0
 /*
  * release the touch object
  */
-touch_release :: #force_inline proc(
+touch_release :: #force_inline proc "contextless" (
     touch: ^Touch,
 ) {
     proxy_marshal_flags(
@@ -6039,7 +6039,7 @@ Output_Listener :: struct{
      * should use xdg_output.logical_position. Instead of using make and model,
      * clients should use name and description.
      */
-    geometry: proc(
+    geometry: proc "c" (
         data: rawptr,
         output: ^Output,
         /*
@@ -6112,7 +6112,7 @@ Output_Listener :: struct{
      * compositors, such as those exposing virtual outputs, might fake the
      * refresh rate or the size.
      */
-    mode: proc(
+    mode: proc "c" (
         data: rawptr,
         output: ^Output,
         /*
@@ -6141,7 +6141,7 @@ Output_Listener :: struct{
      * changes to the output properties to be seen as
      * atomic, even if they happen via multiple events.
      */
-    done: proc(
+    done: proc "c" (
         data: rawptr,
         output: ^Output,
     ),
@@ -6167,7 +6167,7 @@ Output_Listener :: struct{
      * 
      * The scale event will be followed by a done event.
      */
-    scale: proc(
+    scale: proc "c" (
         data: rawptr,
         output: ^Output,
         /*
@@ -6207,7 +6207,7 @@ Output_Listener :: struct{
      * 
      * The name event will be followed by a done event.
      */
-    name: proc(
+    name: proc "c" (
         data: rawptr,
         output: ^Output,
         /*
@@ -6233,7 +6233,7 @@ Output_Listener :: struct{
      * 
      * The description event will be followed by a done event.
      */
-    description: proc(
+    description: proc "c" (
         data: rawptr,
         output: ^Output,
         /*
@@ -6244,23 +6244,23 @@ Output_Listener :: struct{
 
 }
 
-output_add_listener :: #force_inline proc(output: ^Output, listener: ^Output_Listener, data: rawptr) -> i32 {
+output_add_listener :: #force_inline proc "contextless" (output: ^Output, listener: ^Output_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)output,
         rawptr(listener),
         data
     )
 }
-output_set_user_data :: #force_inline proc(output: ^Output, user_data: rawptr) {
+output_set_user_data :: #force_inline proc "contextless" (output: ^Output, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)output,
         user_data
     )
 }
-output_get_user_data :: #force_inline proc(output: ^Output) -> rawptr {
+output_get_user_data :: #force_inline proc "contextless" (output: ^Output) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)output)
 }
-output_get_version :: #force_inline proc(output: ^Output) -> u32 {
+output_get_version :: #force_inline proc "contextless" (output: ^Output) -> u32 {
     return proxy_get_version(cast(^Proxy)output);
 }
 
@@ -6271,7 +6271,7 @@ OUTPUT_RELEASE :: 0
  * Using this request a client can tell the server that it is not going to
  * use the output object anymore.
  */
-output_release :: #force_inline proc(
+output_release :: #force_inline proc "contextless" (
     output: ^Output,
 ) {
     proxy_marshal_flags(
@@ -6285,16 +6285,16 @@ output_release :: #force_inline proc(
 
 
 
-region_set_user_data :: #force_inline proc(region: ^Region, user_data: rawptr) {
+region_set_user_data :: #force_inline proc "contextless" (region: ^Region, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)region,
         user_data
     )
 }
-region_get_user_data :: #force_inline proc(region: ^Region) -> rawptr {
+region_get_user_data :: #force_inline proc "contextless" (region: ^Region) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)region)
 }
-region_get_version :: #force_inline proc(region: ^Region) -> u32 {
+region_get_version :: #force_inline proc "contextless" (region: ^Region) -> u32 {
     return proxy_get_version(cast(^Proxy)region);
 }
 
@@ -6306,7 +6306,7 @@ REGION_SUBTRACT :: 2
  * destroy region
  * Destroy the region.  This will invalidate the object ID.
  */
-region_destroy :: #force_inline proc(
+region_destroy :: #force_inline proc "contextless" (
     region: ^Region,
 ) {
     proxy_marshal_flags(
@@ -6322,7 +6322,7 @@ region_destroy :: #force_inline proc(
  * add rectangle to region
  * Add the specified rectangle to the region.
  */
-region_add :: #force_inline proc(
+region_add :: #force_inline proc "contextless" (
     region: ^Region,
     /*
      * region-local x coordinate
@@ -6358,7 +6358,7 @@ region_add :: #force_inline proc(
  * subtract rectangle from region
  * Subtract the specified rectangle from the region.
  */
-region_subtract :: #force_inline proc(
+region_subtract :: #force_inline proc "contextless" (
     region: ^Region,
     /*
      * region-local x coordinate
@@ -6403,16 +6403,16 @@ Subcompositor_Error :: enum {
 }
 
 
-subcompositor_set_user_data :: #force_inline proc(subcompositor: ^Subcompositor, user_data: rawptr) {
+subcompositor_set_user_data :: #force_inline proc "contextless" (subcompositor: ^Subcompositor, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)subcompositor,
         user_data
     )
 }
-subcompositor_get_user_data :: #force_inline proc(subcompositor: ^Subcompositor) -> rawptr {
+subcompositor_get_user_data :: #force_inline proc "contextless" (subcompositor: ^Subcompositor) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)subcompositor)
 }
-subcompositor_get_version :: #force_inline proc(subcompositor: ^Subcompositor) -> u32 {
+subcompositor_get_version :: #force_inline proc "contextless" (subcompositor: ^Subcompositor) -> u32 {
     return proxy_get_version(cast(^Proxy)subcompositor);
 }
 
@@ -6425,7 +6425,7 @@ SUBCOMPOSITOR_GET_SUBSURFACE :: 1
  * protocol object anymore. This does not affect any other
  * objects, wl_subsurface objects included.
  */
-subcompositor_destroy :: #force_inline proc(
+subcompositor_destroy :: #force_inline proc "contextless" (
     subcompositor: ^Subcompositor,
 ) {
     proxy_marshal_flags(
@@ -6459,7 +6459,7 @@ subcompositor_destroy :: #force_inline proc(
  * This request modifies the behaviour of wl_surface.commit request on
  * the sub-surface, see the documentation on wl_subsurface interface.
  */
-subcompositor_get_subsurface :: #force_inline proc(
+subcompositor_get_subsurface :: #force_inline proc "contextless" (
     subcompositor: ^Subcompositor,
     /*
      * the surface to be turned into a sub-surface
@@ -6491,16 +6491,16 @@ Subsurface_Error :: enum {
 }
 
 
-subsurface_set_user_data :: #force_inline proc(subsurface: ^Subsurface, user_data: rawptr) {
+subsurface_set_user_data :: #force_inline proc "contextless" (subsurface: ^Subsurface, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)subsurface,
         user_data
     )
 }
-subsurface_get_user_data :: #force_inline proc(subsurface: ^Subsurface) -> rawptr {
+subsurface_get_user_data :: #force_inline proc "contextless" (subsurface: ^Subsurface) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)subsurface)
 }
-subsurface_get_version :: #force_inline proc(subsurface: ^Subsurface) -> u32 {
+subsurface_get_version :: #force_inline proc "contextless" (subsurface: ^Subsurface) -> u32 {
     return proxy_get_version(cast(^Proxy)subsurface);
 }
 
@@ -6518,7 +6518,7 @@ SUBSURFACE_SET_DESYNC :: 5
  * wl_subcompositor.get_subsurface request. The wl_surface's association
  * to the parent is deleted. The wl_surface is unmapped immediately.
  */
-subsurface_destroy :: #force_inline proc(
+subsurface_destroy :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
 ) {
     proxy_marshal_flags(
@@ -6547,7 +6547,7 @@ subsurface_destroy :: #force_inline proc(
  * 
  * The initial position is 0, 0.
  */
-subsurface_set_position :: #force_inline proc(
+subsurface_set_position :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
     /*
      * x coordinate in the parent surface
@@ -6585,7 +6585,7 @@ subsurface_set_position :: #force_inline proc(
  * A new sub-surface is initially added as the top-most in the stack
  * of its siblings and parent.
  */
-subsurface_place_above :: #force_inline proc(
+subsurface_place_above :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
     /*
      * the reference surface
@@ -6607,7 +6607,7 @@ subsurface_place_above :: #force_inline proc(
  * The sub-surface is placed just below the reference surface.
  * See wl_subsurface.place_above.
  */
-subsurface_place_below :: #force_inline proc(
+subsurface_place_below :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
     /*
      * the reference surface
@@ -6640,7 +6640,7 @@ subsurface_place_below :: #force_inline proc(
  * 
  * See wl_subsurface for the recursive effect of this mode.
  */
-subsurface_set_sync :: #force_inline proc(
+subsurface_set_sync :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
 ) {
     proxy_marshal_flags(
@@ -6674,7 +6674,7 @@ subsurface_set_sync :: #force_inline proc(
  * If a surface's parent surface behaves as desynchronized, then
  * the cached state is applied on set_desync.
  */
-subsurface_set_desync :: #force_inline proc(
+subsurface_set_desync :: #force_inline proc "contextless" (
     subsurface: ^Subsurface,
 ) {
     proxy_marshal_flags(
@@ -6688,16 +6688,16 @@ subsurface_set_desync :: #force_inline proc(
 
 
 
-fixes_set_user_data :: #force_inline proc(fixes: ^Fixes, user_data: rawptr) {
+fixes_set_user_data :: #force_inline proc "contextless" (fixes: ^Fixes, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)fixes,
         user_data
     )
 }
-fixes_get_user_data :: #force_inline proc(fixes: ^Fixes) -> rawptr {
+fixes_get_user_data :: #force_inline proc "contextless" (fixes: ^Fixes) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)fixes)
 }
-fixes_get_version :: #force_inline proc(fixes: ^Fixes) -> u32 {
+fixes_get_version :: #force_inline proc "contextless" (fixes: ^Fixes) -> u32 {
     return proxy_get_version(cast(^Proxy)fixes);
 }
 
@@ -6707,7 +6707,7 @@ FIXES_DESTROY_REGISTRY :: 1
 /*
  * destroys this object
  */
-fixes_destroy :: #force_inline proc(
+fixes_destroy :: #force_inline proc "contextless" (
     fixes: ^Fixes,
 ) {
     proxy_marshal_flags(
@@ -6731,7 +6731,7 @@ fixes_destroy :: #force_inline proc(
  * client should re-use the object ID once it receives the
  * wl_display.delete_id event.
  */
-fixes_destroy_registry :: #force_inline proc(
+fixes_destroy_registry :: #force_inline proc "contextless" (
     fixes: ^Fixes,
     /*
      * the registry to destroy

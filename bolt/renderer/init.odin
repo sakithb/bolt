@@ -6,6 +6,8 @@ import "core:slice"
 import "core:os"
 import "core:mem"
 import "core:log"
+import "core:math/linalg"
+import "base:runtime"
 
 import "bolt:platform"
 
@@ -31,9 +33,16 @@ Renderer :: struct {
     cmd_pool: vk.CommandPool,
     cmd_buf: vk.CommandBuffer,
 
+    desc_pool: vk.DescriptorPool,
+    desc_set: vk.DescriptorSet,
+    desc_buf: Buffer,
+    desc_buf_mapped: rawptr,
+
     image_avail_sem: vk.Semaphore,
     render_fin_sem: vk.Semaphore,
     in_flight_fence: vk.Fence,
+
+    ubo: Uniform_Buffer_Object
 }
 
 Physical_Device :: struct {
@@ -72,6 +81,7 @@ Swapchain :: struct {
     extent: vk.Extent2D,
     images: []vk.Image,
     image_views: []vk.ImageView,
+    depth_img: Image
 }
 
 Render_Pass :: struct {
@@ -84,9 +94,9 @@ Pipeline :: struct {
     layout: vk.PipelineLayout
 }
 
-Buffer :: struct {
-    hnd: vk.Buffer,
-    mem: vk.DeviceMemory
+Uniform_Buffer_Object :: struct {
+	view:  matrix[4, 4]f32,
+	proj:  matrix[4, 4]f32,
 }
 
 Renderer_Errs :: enum {
@@ -97,11 +107,13 @@ Renderer_Errs :: enum {
     Dev_Ext_Not_Found,
     Could_Not_Create_Surface,
     Phys_Dev_Not_Found,
-    Could_Not_Find_Mem_Type
+    Could_Not_Find_Mem_Type,
+    Could_Not_Find_Supported_Fmt
 }
 
 Renderer_Err :: union #shared_nil {
     Renderer_Errs,
+    runtime.Allocator_Error,
     vk.Result,
     os.Error
 }
@@ -201,8 +213,8 @@ init :: proc(init_info: Renderer_Init_Info) -> Renderer_Err {
 
 	vk.load_proc_addresses_instance(rndr.instance)
 
-    rndr.surface.hnd = platform.wsi_create_surface(rndr.instance) or_return
-    rndr.surface.width, rndr.surface.height = platform.wsi_get_dimensions()
+    rndr.surface.hnd = platform.win_create_surface(rndr.instance) or_return
+    rndr.surface.width, rndr.surface.height = platform.win_get_dimensions()
 
 	create_device() or_return
 	create_swapchain() or_return
@@ -523,6 +535,22 @@ create_swapchain :: proc() -> Renderer_Err {
 		rndr.swapchain.image_views[i] = create_image_view(image, rndr.swapchain.format.format, {.COLOR}) or_return
 	}
 
+    depth_fmt := find_supported_fmt(
+        []vk.Format{.D32_SFLOAT, .D32_SFLOAT_S8_UINT, .D24_UNORM_S8_UINT},
+        .OPTIMAL,
+        {.DEPTH_STENCIL_ATTACHMENT},
+    ) or_return
+
+    rndr.swapchain.depth_img = create_image(
+        rndr.swapchain.extent.width,
+        rndr.swapchain.extent.height,
+        depth_fmt,
+        .OPTIMAL,
+        {.DEPTH_STENCIL_ATTACHMENT},
+        {.DEVICE_LOCAL},
+        {.DEPTH}
+    ) or_return
+
     color_attachment := vk.AttachmentDescription {
         format = rndr.swapchain.format.format,
         samples = {._1},
@@ -534,9 +562,25 @@ create_swapchain :: proc() -> Renderer_Err {
         finalLayout = .PRESENT_SRC_KHR
     }
 
+    depth_attachment := vk.AttachmentDescription{
+        format = depth_fmt,
+        samples = {._1},
+        loadOp = .CLEAR,
+        storeOp = .DONT_CARE,
+        stencilLoadOp = .DONT_CARE,
+        stencilStoreOp = .DONT_CARE,
+        initialLayout = .UNDEFINED,
+        finalLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    }
+
     color_attachment_ref := vk.AttachmentReference{
         attachment = 0,
         layout = .COLOR_ATTACHMENT_OPTIMAL
+    }
+
+    depth_attachment_ref := vk.AttachmentReference{
+        attachment = 1,
+        layout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     }
 
     subpass := vk.SubpassDescription{
@@ -546,13 +590,25 @@ create_swapchain :: proc() -> Renderer_Err {
         colorAttachmentCount = 1,
         pColorAttachments = &color_attachment_ref,
         pResolveAttachments = nil,
-        pDepthStencilAttachment = nil,
+        pDepthStencilAttachment = &depth_attachment_ref,
         preserveAttachmentCount = 0,
         pPreserveAttachments = nil,
     }
 
     attachments := []vk.AttachmentDescription{
-        color_attachment
+        color_attachment,
+        depth_attachment
+    }
+    
+    dependencies := []vk.SubpassDependency{
+        {
+            srcSubpass = vk.SUBPASS_EXTERNAL,
+            dstSubpass = 0,
+            srcStageMask = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
+            srcAccessMask = {},
+            dstStageMask = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
+            dstAccessMask = {.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE}
+        }
     }
 
     render_pass_create_info := vk.RenderPassCreateInfo{
@@ -561,19 +617,24 @@ create_swapchain :: proc() -> Renderer_Err {
         pAttachments = raw_data(attachments),
         subpassCount = 1,
         pSubpasses = &subpass,
-        dependencyCount = 0,
-        pDependencies = nil,
+        dependencyCount = u32(len(dependencies)),
+        pDependencies = raw_data(dependencies),
     }
 
     vk.CreateRenderPass(rndr.device.hnd, &render_pass_create_info, nil, &rndr.render_pass.hnd) or_return
 
     rndr.render_pass.framebuffers = make([]vk.Framebuffer, len(rndr.swapchain.image_views))
     for &image_view, i in rndr.swapchain.image_views {
+        attachments := []vk.ImageView{
+            image_view,
+            rndr.swapchain.depth_img.view
+        }
+
         framebuffer_create_info := vk.FramebufferCreateInfo{
             sType = .FRAMEBUFFER_CREATE_INFO,
             renderPass = rndr.render_pass.hnd,
-            attachmentCount = 1,
-            pAttachments = &image_view,
+            attachmentCount = u32(len(attachments)),
+            pAttachments = raw_data(attachments),
             width = rndr.swapchain.extent.width,
             height = rndr.swapchain.extent.height,
             layers = 1,
@@ -607,6 +668,8 @@ destroy_swapchain :: proc() {
     delete(rndr.swapchain.image_views)
     delete(rndr.render_pass.framebuffers)
 
+    free_image(rndr.swapchain.depth_img)
+
     for _, i in rndr.swapchain.images {
         vk.DestroyFramebuffer(rndr.device.hnd, rndr.render_pass.framebuffers[i], nil)
         vk.DestroyImageView(rndr.device.hnd, rndr.swapchain.image_views[i], nil)
@@ -617,7 +680,7 @@ destroy_swapchain :: proc() {
 }
 
 create_pipelines :: proc() -> Renderer_Err {
-    vert_shader := create_shader_module("shaders/shader.vert.spv") or_return
+    vert_shader := create_shader_module("assets/shaders/shader.vert") or_return
     defer vk.DestroyShaderModule(rndr.device.hnd, vert_shader, nil)
 
     vertex_stage := vk.PipelineShaderStageCreateInfo{
@@ -628,7 +691,7 @@ create_pipelines :: proc() -> Renderer_Err {
         pSpecializationInfo = nil
     }
 
-    frag_shader := create_shader_module("shaders/shader.frag.spv") or_return
+    frag_shader := create_shader_module("assets/shaders/shader.frag") or_return
     defer vk.DestroyShaderModule(rndr.device.hnd, frag_shader, nil)
 
     fragment_stage := vk.PipelineShaderStageCreateInfo{
@@ -644,22 +707,22 @@ create_pipelines :: proc() -> Renderer_Err {
     // TODO: vertex layout
     vertex_binding_desc := vk.VertexInputBindingDescription{
         binding = 0,
-        stride = 5 * size_of(f32),
+        stride = size_of(Vertex),
         inputRate = .VERTEX
     }
 
     vertex_attr_pos_desc := vk.VertexInputAttributeDescription{
         location = 0,
         binding = 0,
-        format = .R32G32_SFLOAT,
-        offset = 0
+        format = .R32G32B32_SFLOAT,
+        offset = u32(offset_of(Vertex, pos))
     }
 
     vertex_attr_col_desc := vk.VertexInputAttributeDescription{
         location = 1,
         binding = 0,
         format = .R32G32B32_SFLOAT,
-        offset = 2 * size_of(f32)
+        offset = u32(offset_of(Vertex, col))
     }
 
     vertex_attrs := []vk.VertexInputAttributeDescription{vertex_attr_pos_desc, vertex_attr_col_desc}
@@ -703,7 +766,7 @@ create_pipelines :: proc() -> Renderer_Err {
         depthClampEnable = false,
         rasterizerDiscardEnable = false,
         polygonMode = .FILL,
-        cullMode = {.BACK},
+        cullMode = {},
         frontFace = .CLOCKWISE,
         depthBiasEnable = false,
         depthBiasConstantFactor = 0.0,
@@ -724,15 +787,11 @@ create_pipelines :: proc() -> Renderer_Err {
 
     ds_state := vk.PipelineDepthStencilStateCreateInfo{
         sType = .PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        depthTestEnable = false,
-        depthWriteEnable = false,
-        depthCompareOp = .NEVER,
+        depthTestEnable = true,
+        depthWriteEnable = true,
+        depthCompareOp = .LESS,
         depthBoundsTestEnable = false,
         stencilTestEnable = false,
-        front = {},
-        back = {},
-        minDepthBounds = 0.0,
-        maxDepthBounds = 0.0,
     }
 
     color_blend_state := vk.PipelineColorBlendStateCreateInfo{
@@ -761,12 +820,111 @@ create_pipelines :: proc() -> Renderer_Err {
         pDynamicStates = raw_data(dynamic_states)
     }
 
+    // TODO: move desc set creation to a seperate function?
+
+    // Desc set layout
+    ubo_layout := vk.DescriptorSetLayoutBinding{
+        binding = 0,
+        descriptorType = .UNIFORM_BUFFER,
+        descriptorCount = 1,
+        stageFlags = {.VERTEX}
+    }
+
+    desc_set_layout_create_info := vk.DescriptorSetLayoutCreateInfo{
+        sType = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        bindingCount = 1,
+        pBindings = &ubo_layout
+    }
+
+    desc_set_layout: vk.DescriptorSetLayout
+    vk.CreateDescriptorSetLayout(rndr.device.hnd, &desc_set_layout_create_info, nil, &desc_set_layout) or_return
+
+    // Desc pool
+    desc_pool_sizes := [?]vk.DescriptorPoolSize{
+        {type = .UNIFORM_BUFFER, descriptorCount = 1},
+    }
+
+    desc_pool_create_info := vk.DescriptorPoolCreateInfo{
+        sType = .DESCRIPTOR_POOL_CREATE_INFO,
+        poolSizeCount = len(desc_pool_sizes),
+        pPoolSizes = &desc_pool_sizes[0],
+        maxSets = 1
+    }
+
+    vk.CreateDescriptorPool(rndr.device.hnd, &desc_pool_create_info, nil, &rndr.desc_pool) or_return
+
+    desc_set_alloc_info := vk.DescriptorSetAllocateInfo{
+        sType = .DESCRIPTOR_SET_ALLOCATE_INFO,
+        descriptorPool = rndr.desc_pool,
+        descriptorSetCount = 1,
+        pSetLayouts = &desc_set_layout,
+    }
+
+    vk.AllocateDescriptorSets(rndr.device.hnd, &desc_set_alloc_info, &rndr.desc_set) or_return
+
+    // desc set update
+
+    rndr.desc_buf = create_buffer(
+        size_of(Uniform_Buffer_Object), 
+        {.UNIFORM_BUFFER},
+        {.HOST_VISIBLE, .HOST_COHERENT}
+    ) or_return
+
+    vk.MapMemory(
+        rndr.device.hnd,
+        rndr.desc_buf.mem,
+        0,
+        size_of(Uniform_Buffer_Object),
+        {},
+        &rndr.desc_buf_mapped
+    ) or_return
+
+    ubo := Uniform_Buffer_Object{
+        view = linalg.matrix4_look_at([?]f32{0.0, 3.0, 5.0}, [?]f32{0.0, 0.0, 0.0}, [?]f32{0.0, 0.0, 1.0}),
+        proj = linalg.matrix4_perspective(
+            linalg.to_radians(f32(45.0)),
+            f32(rndr.swapchain.extent.width) / f32(rndr.swapchain.extent.height),
+            0.1,
+            100.0
+        )
+    }
+
+	mem.copy(rndr.desc_buf_mapped, &ubo, size_of(ubo))
+
+    desc_buffer_info := vk.DescriptorBufferInfo{
+        buffer = rndr.desc_buf.hnd,
+        offset = 0,
+        range  = size_of(Uniform_Buffer_Object),
+    }
+
+    desc_write := vk.WriteDescriptorSet{
+        sType = .WRITE_DESCRIPTOR_SET,
+        dstSet = rndr.desc_set,
+        dstBinding = 0,
+        dstArrayElement = 0,
+        descriptorType = .UNIFORM_BUFFER,
+        descriptorCount = 1,
+        pBufferInfo = &desc_buffer_info,
+    }
+
+    vk.UpdateDescriptorSets(rndr.device.hnd, 1, &desc_write, 0, nil)
+
+    // desc end
+
+    push_const_ranges := []vk.PushConstantRange{
+        vk.PushConstantRange{
+            offset = 0,
+            size = size_of(Push_Consts),
+            stageFlags = {.VERTEX},
+        }
+    }
+
     layout_create_info := vk.PipelineLayoutCreateInfo{
         sType = .PIPELINE_LAYOUT_CREATE_INFO,
-        setLayoutCount = 0,
-        pSetLayouts = nil,
-        pushConstantRangeCount = 0,
-        pPushConstantRanges = nil
+        setLayoutCount = 1,
+        pSetLayouts = &desc_set_layout,
+        pushConstantRangeCount = u32(len(push_const_ranges)),
+        pPushConstantRanges = raw_data(push_const_ranges)
     }
 
     vk.CreatePipelineLayout(
@@ -847,171 +1005,3 @@ deinit :: proc() {
     vk.DestroySurfaceKHR(rndr.instance, rndr.surface.hnd, nil)
     vk.DestroyInstance(rndr.instance, nil)
 }
-
-create_image_view :: proc(
-    image: vk.Image,
-    format: vk.Format,
-    aspect_mask: vk.ImageAspectFlags
-) -> (image_view: vk.ImageView, err: Renderer_Err) {
-	create_info := vk.ImageViewCreateInfo{
-		sType = .IMAGE_VIEW_CREATE_INFO,
-		image = image,
-		viewType = .D2,
-		format = format,
-        components = {},
-		subresourceRange = {
-			aspectMask = aspect_mask,
-			baseMipLevel = 0,
-			levelCount = 1,
-			baseArrayLayer = 0,
-			layerCount = 1,
-		},
-	}
-
-    vk.CreateImageView(rndr.device.hnd, &create_info, nil, &image_view) or_return
-
-    return
-}
-
-create_shader_module :: proc(path: string) -> (module: vk.ShaderModule, err: Renderer_Err) {
-    data := os.read_entire_file_or_err(path) or_return
-
-    create_info := vk.ShaderModuleCreateInfo{
-        sType = .SHADER_MODULE_CREATE_INFO,
-        codeSize = len(data),
-        pCode = raw_data(transmute([]u32)data)
-    }
-
-    vk.CreateShaderModule(rndr.device.hnd, &create_info, nil, &module) or_return
-
-    delete(data)
-
-    return
-}
-
-// TODO: use a memory pool/allocator
-create_buffer :: proc(
-    size: uint,
-    usage: vk.BufferUsageFlags,
-    mem_props: vk.MemoryPropertyFlags
-) -> (buffer: Buffer, err: Renderer_Err) {
-    buffer_create_info := vk.BufferCreateInfo{
-        sType = .BUFFER_CREATE_INFO,
-        size = cast(vk.DeviceSize)size,
-        usage = usage,
-        sharingMode = .EXCLUSIVE,
-        queueFamilyIndexCount = 1,
-        pQueueFamilyIndices = raw_data([]u32{u32(rndr.queues[.Graphics].index)})
-    }
- 
-    vk.CreateBuffer(rndr.device.hnd, &buffer_create_info, nil, &buffer.hnd) or_return
-
-    mem_reqs: vk.MemoryRequirements
-    vk.GetBufferMemoryRequirements(rndr.device.hnd, buffer.hnd, &mem_reqs)
-
-    mem_type_index := -1
-
-    for _, i in rndr.physical_device.mem_props.memoryTypes {
-        if mem_reqs.memoryTypeBits & (1 << u32(i)) != 0 && 
-           mem_props <= rndr.physical_device.mem_props.memoryTypes[i].propertyFlags {
-            mem_type_index = i
-            break
-        }
-    }
-
-    if mem_type_index == -1 {
-        err = .Could_Not_Find_Mem_Type
-        return
-    }
-
-    alloc_info := vk.MemoryAllocateInfo{
-        sType = .MEMORY_ALLOCATE_INFO,
-        allocationSize = mem_reqs.size,
-        memoryTypeIndex = u32(mem_type_index)
-    }
-
-    vk.AllocateMemory(rndr.device.hnd, &alloc_info, nil, &buffer.mem) or_return
-    vk.BindBufferMemory(rndr.device.hnd, buffer.hnd, buffer.mem, 0) or_return
-
-    return
-}
-
-upload_buffer :: proc(
-    data: rawptr,
-    size: uint
-) -> (dst_buf: Buffer, err: Renderer_Err) {
-    dst_buf = create_buffer(
-        size,
-        {.TRANSFER_DST, .VERTEX_BUFFER},
-        {.DEVICE_LOCAL}
-    ) or_return
-
-    staging_buf := create_buffer(
-        size,
-        {.TRANSFER_SRC},
-        {.HOST_VISIBLE, .HOST_COHERENT}
-    ) or_return
-
-    mapped_data: rawptr
-    vk.MapMemory(
-        rndr.device.hnd,
-        staging_buf.mem,
-        0,
-        cast(vk.DeviceSize)size,
-        {},
-        &mapped_data
-    ) or_return
-    mem.copy(mapped_data, data, int(size))
-    vk.UnmapMemory(rndr.device.hnd, staging_buf.mem)
-
-    alloc_info := vk.CommandBufferAllocateInfo{
-        sType = .COMMAND_BUFFER_ALLOCATE_INFO,
-        commandBufferCount = 1,
-        level = .PRIMARY,
-        commandPool = rndr.cmd_pool,
-    }
-
-    tmp_cmd_buf: vk.CommandBuffer
-    vk.AllocateCommandBuffers(rndr.device.hnd, &alloc_info, &tmp_cmd_buf) or_return
-
-    begin_info := vk.CommandBufferBeginInfo{
-        sType = .COMMAND_BUFFER_BEGIN_INFO, 
-        flags = {.ONE_TIME_SUBMIT},
-    }
-
-    vk.BeginCommandBuffer(tmp_cmd_buf, &begin_info) or_return
-
-    region := vk.BufferCopy{
-        size = cast(vk.DeviceSize)size,
-    }
-
-    vk.CmdCopyBuffer(tmp_cmd_buf, staging_buf.hnd, dst_buf.hnd, 1, &region)
-
-    vk.EndCommandBuffer(tmp_cmd_buf) or_return
-
-    submit_info := vk.SubmitInfo{
-        sType = .SUBMIT_INFO,
-        commandBufferCount = 1,
-        pCommandBuffers = &tmp_cmd_buf
-    }
-
-    vk.QueueSubmit(rndr.queues[.Transfer].hnd, 1, &submit_info, VK_NULL_HANDLE) or_return
-    vk.QueueWaitIdle(rndr.queues[.Transfer].hnd) or_return
-
-    vk.FreeCommandBuffers(rndr.device.hnd, rndr.cmd_pool, 1, &tmp_cmd_buf)
-
-    vk.DestroyBuffer(rndr.device.hnd, staging_buf.hnd, nil)
-    vk.FreeMemory(rndr.device.hnd, staging_buf.mem, nil)
-
-    return
-}
-
-free_buffer :: proc(buf: Buffer) {
-    if r := vk.DeviceWaitIdle(rndr.device.hnd); r != vk.Result.SUCCESS {
-        log.panicf("could not wait for devie: %v", r)
-    }
-
-    vk.DestroyBuffer(rndr.device.hnd, buf.hnd, nil)
-    vk.FreeMemory(rndr.device.hnd, buf.mem, nil)
-}
-

@@ -419,7 +419,7 @@ Xdg_Wm_Base_Listener :: struct{
      * A compositor is free to ping in any way it wants, but a client must
      * always respond to any xdg_wm_base object it created.
      */
-    ping: proc(
+    ping: proc "c" (
         data: rawptr,
         xdg_wm_base: ^Xdg_Wm_Base,
         /*
@@ -430,23 +430,23 @@ Xdg_Wm_Base_Listener :: struct{
 
 }
 
-xdg_wm_base_add_listener :: #force_inline proc(xdg_wm_base: ^Xdg_Wm_Base, listener: ^Xdg_Wm_Base_Listener, data: rawptr) -> i32 {
+xdg_wm_base_add_listener :: #force_inline proc "contextless" (xdg_wm_base: ^Xdg_Wm_Base, listener: ^Xdg_Wm_Base_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)xdg_wm_base,
         rawptr(listener),
         data
     )
 }
-xdg_wm_base_set_user_data :: #force_inline proc(xdg_wm_base: ^Xdg_Wm_Base, user_data: rawptr) {
+xdg_wm_base_set_user_data :: #force_inline proc "contextless" (xdg_wm_base: ^Xdg_Wm_Base, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)xdg_wm_base,
         user_data
     )
 }
-xdg_wm_base_get_user_data :: #force_inline proc(xdg_wm_base: ^Xdg_Wm_Base) -> rawptr {
+xdg_wm_base_get_user_data :: #force_inline proc "contextless" (xdg_wm_base: ^Xdg_Wm_Base) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)xdg_wm_base)
 }
-xdg_wm_base_get_version :: #force_inline proc(xdg_wm_base: ^Xdg_Wm_Base) -> u32 {
+xdg_wm_base_get_version :: #force_inline proc "contextless" (xdg_wm_base: ^Xdg_Wm_Base) -> u32 {
     return proxy_get_version(cast(^Proxy)xdg_wm_base);
 }
 
@@ -463,7 +463,7 @@ XDG_WM_BASE_PONG :: 3
  * still alive created by this xdg_wm_base object instance is illegal
  * and will result in a defunct_surfaces error.
  */
-xdg_wm_base_destroy :: #force_inline proc(
+xdg_wm_base_destroy :: #force_inline proc "contextless" (
     xdg_wm_base: ^Xdg_Wm_Base,
 ) {
     proxy_marshal_flags(
@@ -481,7 +481,7 @@ xdg_wm_base_destroy :: #force_inline proc(
  * surfaces relative to some parent surface. See the interface description
  * and xdg_surface.get_popup for details.
  */
-xdg_wm_base_create_positioner :: #force_inline proc(
+xdg_wm_base_create_positioner :: #force_inline proc "contextless" (
     xdg_wm_base: ^Xdg_Wm_Base,
 ) -> ^Xdg_Positioner {
     return cast(^Xdg_Positioner)proxy_marshal_flags(
@@ -510,7 +510,7 @@ xdg_wm_base_create_positioner :: #force_inline proc(
  * See the documentation of xdg_surface for more details about what an
  * xdg_surface is and how it is used.
  */
-xdg_wm_base_get_xdg_surface :: #force_inline proc(
+xdg_wm_base_get_xdg_surface :: #force_inline proc "contextless" (
     xdg_wm_base: ^Xdg_Wm_Base,
     surface: ^Surface,
 ) -> ^Xdg_Surface {
@@ -531,7 +531,7 @@ xdg_wm_base_get_xdg_surface :: #force_inline proc(
  * the client may be deemed unresponsive. See xdg_wm_base.ping
  * and xdg_wm_base.error.unresponsive.
  */
-xdg_wm_base_pong :: #force_inline proc(
+xdg_wm_base_pong :: #force_inline proc "contextless" (
     xdg_wm_base: ^Xdg_Wm_Base,
     /*
      * serial of the ping event
@@ -674,16 +674,16 @@ Xdg_Positioner_Constraint_Adjustment_Flag :: enum {
 Xdg_Positioner_Constraint_Adjustment_Flags :: bit_set[Xdg_Positioner_Constraint_Adjustment_Flag]
 
 
-xdg_positioner_set_user_data :: #force_inline proc(xdg_positioner: ^Xdg_Positioner, user_data: rawptr) {
+xdg_positioner_set_user_data :: #force_inline proc "contextless" (xdg_positioner: ^Xdg_Positioner, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)xdg_positioner,
         user_data
     )
 }
-xdg_positioner_get_user_data :: #force_inline proc(xdg_positioner: ^Xdg_Positioner) -> rawptr {
+xdg_positioner_get_user_data :: #force_inline proc "contextless" (xdg_positioner: ^Xdg_Positioner) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)xdg_positioner)
 }
-xdg_positioner_get_version :: #force_inline proc(xdg_positioner: ^Xdg_Positioner) -> u32 {
+xdg_positioner_get_version :: #force_inline proc "contextless" (xdg_positioner: ^Xdg_Positioner) -> u32 {
     return proxy_get_version(cast(^Proxy)xdg_positioner);
 }
 
@@ -702,7 +702,7 @@ XDG_POSITIONER_SET_PARENT_CONFIGURE :: 9
  * destroy the xdg_positioner object
  * Notify the compositor that the xdg_positioner will no longer be used.
  */
-xdg_positioner_destroy :: #force_inline proc(
+xdg_positioner_destroy :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
 ) {
     proxy_marshal_flags(
@@ -722,7 +722,7 @@ xdg_positioner_destroy :: #force_inline proc(
  * 
  * If a zero or negative size is set the invalid_input error is raised.
  */
-xdg_positioner_set_size :: #force_inline proc(
+xdg_positioner_set_size :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * width of positioned rectangle
@@ -757,7 +757,7 @@ xdg_positioner_set_size :: #force_inline proc(
  * 
  * If a negative size is set the invalid_input error is raised.
  */
-xdg_positioner_set_anchor_rect :: #force_inline proc(
+xdg_positioner_set_anchor_rect :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * x position of anchor rectangle
@@ -798,7 +798,7 @@ xdg_positioner_set_anchor_rect :: #force_inline proc(
  * otherwise, the derived anchor point will be centered on the specified
  * edge, or in the center of the anchor rectangle if no edge is specified.
  */
-xdg_positioner_set_anchor :: #force_inline proc(
+xdg_positioner_set_anchor :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * anchor
@@ -825,7 +825,7 @@ xdg_positioner_set_anchor :: #force_inline proc(
  * gravity specified. If the gravity is not in the ‘gravity’ enum, an
  * invalid_input error is raised.
  */
-xdg_positioner_set_gravity :: #force_inline proc(
+xdg_positioner_set_gravity :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * gravity direction
@@ -858,7 +858,7 @@ xdg_positioner_set_gravity :: #force_inline proc(
  * 
  * The default adjustment is none.
  */
-xdg_positioner_set_constraint_adjustment :: #force_inline proc(
+xdg_positioner_set_constraint_adjustment :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * bit mask of constraint adjustments
@@ -889,7 +889,7 @@ xdg_positioner_set_constraint_adjustment :: #force_inline proc(
  * element, while aligning the user interface element of the parent surface
  * with some user interface element placed somewhere in the popup surface.
  */
-xdg_positioner_set_offset :: #force_inline proc(
+xdg_positioner_set_offset :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * surface position x offset
@@ -920,7 +920,7 @@ xdg_positioner_set_offset :: #force_inline proc(
  * xdg_popup.configure event is sent with updated geometry, followed by an
  * xdg_surface.configure event.
  */
-xdg_positioner_set_reactive :: #force_inline proc(
+xdg_positioner_set_reactive :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
 ) {
     proxy_marshal_flags(
@@ -941,7 +941,7 @@ xdg_positioner_set_reactive :: #force_inline proc(
  * 
  * The arguments are given in the surface-local coordinate space.
  */
-xdg_positioner_set_parent_size :: #force_inline proc(
+xdg_positioner_set_parent_size :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * future window geometry width of parent
@@ -970,7 +970,7 @@ xdg_positioner_set_parent_size :: #force_inline proc(
  * with set_parent_size to determine what future state the popup should be
  * constrained using.
  */
-xdg_positioner_set_parent_configure :: #force_inline proc(
+xdg_positioner_set_parent_configure :: #force_inline proc "contextless" (
     xdg_positioner: ^Xdg_Positioner,
     /*
      * serial of parent configure event
@@ -1035,7 +1035,7 @@ Xdg_Surface_Listener :: struct{
      * If the client receives multiple configure events before it can respond
      * to one, it is free to discard all but the last event it received.
      */
-    configure: proc(
+    configure: proc "c" (
         data: rawptr,
         xdg_surface: ^Xdg_Surface,
         /*
@@ -1046,23 +1046,23 @@ Xdg_Surface_Listener :: struct{
 
 }
 
-xdg_surface_add_listener :: #force_inline proc(xdg_surface: ^Xdg_Surface, listener: ^Xdg_Surface_Listener, data: rawptr) -> i32 {
+xdg_surface_add_listener :: #force_inline proc "contextless" (xdg_surface: ^Xdg_Surface, listener: ^Xdg_Surface_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)xdg_surface,
         rawptr(listener),
         data
     )
 }
-xdg_surface_set_user_data :: #force_inline proc(xdg_surface: ^Xdg_Surface, user_data: rawptr) {
+xdg_surface_set_user_data :: #force_inline proc "contextless" (xdg_surface: ^Xdg_Surface, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)xdg_surface,
         user_data
     )
 }
-xdg_surface_get_user_data :: #force_inline proc(xdg_surface: ^Xdg_Surface) -> rawptr {
+xdg_surface_get_user_data :: #force_inline proc "contextless" (xdg_surface: ^Xdg_Surface) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)xdg_surface)
 }
-xdg_surface_get_version :: #force_inline proc(xdg_surface: ^Xdg_Surface) -> u32 {
+xdg_surface_get_version :: #force_inline proc "contextless" (xdg_surface: ^Xdg_Surface) -> u32 {
     return proxy_get_version(cast(^Proxy)xdg_surface);
 }
 
@@ -1078,7 +1078,7 @@ XDG_SURFACE_ACK_CONFIGURE :: 4
  * after its role object has been destroyed, otherwise
  * a defunct_role_object error is raised.
  */
-xdg_surface_destroy :: #force_inline proc(
+xdg_surface_destroy :: #force_inline proc "contextless" (
     xdg_surface: ^Xdg_Surface,
 ) {
     proxy_marshal_flags(
@@ -1098,7 +1098,7 @@ xdg_surface_destroy :: #force_inline proc(
  * See the documentation of xdg_toplevel for more details about what an
  * xdg_toplevel is and how it is used.
  */
-xdg_surface_get_toplevel :: #force_inline proc(
+xdg_surface_get_toplevel :: #force_inline proc "contextless" (
     xdg_surface: ^Xdg_Surface,
 ) -> ^Xdg_Toplevel {
     return cast(^Xdg_Toplevel)proxy_marshal_flags(
@@ -1122,7 +1122,7 @@ xdg_surface_get_toplevel :: #force_inline proc(
  * See the documentation of xdg_popup for more details about what an
  * xdg_popup is and how it is used.
  */
-xdg_surface_get_popup :: #force_inline proc(
+xdg_surface_get_popup :: #force_inline proc "contextless" (
     xdg_surface: ^Xdg_Surface,
     parent: ^Xdg_Surface,
     positioner: ^Xdg_Positioner,
@@ -1179,7 +1179,7 @@ xdg_surface_get_popup :: #force_inline proc(
  * greater than zero. Setting an invalid size will raise an
  * invalid_size error.
  */
-xdg_surface_set_window_geometry :: #force_inline proc(
+xdg_surface_set_window_geometry :: #force_inline proc "contextless" (
     xdg_surface: ^Xdg_Surface,
     x: i32,
     y: i32,
@@ -1234,7 +1234,7 @@ xdg_surface_set_window_geometry :: #force_inline proc(
  * event identified by the last ack_configure request for the same
  * xdg_surface. Doing so will raise an invalid_serial error.
  */
-xdg_surface_ack_configure :: #force_inline proc(
+xdg_surface_ack_configure :: #force_inline proc "contextless" (
     xdg_surface: ^Xdg_Surface,
     /*
      * the serial from the configure event
@@ -1419,7 +1419,7 @@ Xdg_Toplevel_Listener :: struct{
      * Clients must send an ack_configure in response to this event. See
      * xdg_surface.configure and xdg_surface.ack_configure for details.
      */
-    configure: proc(
+    configure: proc "c" (
         data: rawptr,
         xdg_toplevel: ^Xdg_Toplevel,
         width: i32,
@@ -1438,7 +1438,7 @@ Xdg_Toplevel_Listener :: struct{
      * window. The client may choose to ignore this request, or show
      * a dialog to ask the user to save their data, etc.
      */
-    close: proc(
+    close: proc "c" (
         data: rawptr,
         xdg_toplevel: ^Xdg_Toplevel,
     ),
@@ -1461,7 +1461,7 @@ Xdg_Toplevel_Listener :: struct{
      * xdg_toplevel.configure_bounds will be sent, followed by
      * xdg_toplevel.configure and xdg_surface.configure.
      */
-    configure_bounds: proc(
+    configure_bounds: proc "c" (
         data: rawptr,
         xdg_toplevel: ^Xdg_Toplevel,
         width: i32,
@@ -1491,7 +1491,7 @@ Xdg_Toplevel_Listener :: struct{
      * The capabilities are sent as an array of 32-bit unsigned integers in
      * native endianness.
      */
-    wm_capabilities: proc(
+    wm_capabilities: proc "c" (
         data: rawptr,
         xdg_toplevel: ^Xdg_Toplevel,
         /*
@@ -1502,23 +1502,23 @@ Xdg_Toplevel_Listener :: struct{
 
 }
 
-xdg_toplevel_add_listener :: #force_inline proc(xdg_toplevel: ^Xdg_Toplevel, listener: ^Xdg_Toplevel_Listener, data: rawptr) -> i32 {
+xdg_toplevel_add_listener :: #force_inline proc "contextless" (xdg_toplevel: ^Xdg_Toplevel, listener: ^Xdg_Toplevel_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)xdg_toplevel,
         rawptr(listener),
         data
     )
 }
-xdg_toplevel_set_user_data :: #force_inline proc(xdg_toplevel: ^Xdg_Toplevel, user_data: rawptr) {
+xdg_toplevel_set_user_data :: #force_inline proc "contextless" (xdg_toplevel: ^Xdg_Toplevel, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)xdg_toplevel,
         user_data
     )
 }
-xdg_toplevel_get_user_data :: #force_inline proc(xdg_toplevel: ^Xdg_Toplevel) -> rawptr {
+xdg_toplevel_get_user_data :: #force_inline proc "contextless" (xdg_toplevel: ^Xdg_Toplevel) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)xdg_toplevel)
 }
-xdg_toplevel_get_version :: #force_inline proc(xdg_toplevel: ^Xdg_Toplevel) -> u32 {
+xdg_toplevel_get_version :: #force_inline proc "contextless" (xdg_toplevel: ^Xdg_Toplevel) -> u32 {
     return proxy_get_version(cast(^Proxy)xdg_toplevel);
 }
 
@@ -1542,7 +1542,7 @@ XDG_TOPLEVEL_SET_MINIMIZED :: 13
  * This request destroys the role surface and unmaps the surface;
  * see "Unmapping" behavior in interface section for details.
  */
-xdg_toplevel_destroy :: #force_inline proc(
+xdg_toplevel_destroy :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
 ) {
     proxy_marshal_flags(
@@ -1577,7 +1577,7 @@ xdg_toplevel_destroy :: #force_inline proc(
  * descendants, and the parent must be different from the child toplevel,
  * otherwise the invalid_parent protocol error is raised.
  */
-xdg_toplevel_set_parent :: #force_inline proc(
+xdg_toplevel_set_parent :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     parent: ^Xdg_Toplevel,
 ) {
@@ -1601,7 +1601,7 @@ xdg_toplevel_set_parent :: #force_inline proc(
  * 
  * The string must be encoded in UTF-8.
  */
-xdg_toplevel_set_title :: #force_inline proc(
+xdg_toplevel_set_title :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     title: cstring,
 ) {
@@ -1641,7 +1641,7 @@ xdg_toplevel_set_title :: #force_inline proc(
  * 
  * [0] https://standards.freedesktop.org/desktop-entry-spec/
  */
-xdg_toplevel_set_app_id :: #force_inline proc(
+xdg_toplevel_set_app_id :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     app_id: cstring,
 ) {
@@ -1670,7 +1670,7 @@ xdg_toplevel_set_app_id :: #force_inline proc(
  * This request must be used in response to some sort of user action
  * like a button press, key press, or touch down event.
  */
-xdg_toplevel_show_window_menu :: #force_inline proc(
+xdg_toplevel_show_window_menu :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     /*
      * the wl_seat of the user event
@@ -1721,7 +1721,7 @@ xdg_toplevel_show_window_menu :: #force_inline proc(
  * updating a pointer cursor, during the move. There is no guarantee
  * that the device focus will return when the move is completed.
  */
-xdg_toplevel_move :: #force_inline proc(
+xdg_toplevel_move :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     /*
      * the wl_seat of the user event
@@ -1777,7 +1777,7 @@ xdg_toplevel_move :: #force_inline proc(
  * use this information to adapt its behavior, e.g. choose an appropriate
  * cursor image.
  */
-xdg_toplevel_resize :: #force_inline proc(
+xdg_toplevel_resize :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     /*
      * the wl_seat of the user event
@@ -1840,7 +1840,7 @@ xdg_toplevel_resize :: #force_inline proc(
  * strictly negative values for width or height will result in a
  * invalid_size error.
  */
-xdg_toplevel_set_max_size :: #force_inline proc(
+xdg_toplevel_set_max_size :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     width: i32,
     height: i32,
@@ -1892,7 +1892,7 @@ xdg_toplevel_set_max_size :: #force_inline proc(
  * strictly negative values for width and height will result in a
  * invalid_size error.
  */
-xdg_toplevel_set_min_size :: #force_inline proc(
+xdg_toplevel_set_min_size :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     width: i32,
     height: i32,
@@ -1930,7 +1930,7 @@ xdg_toplevel_set_min_size :: #force_inline proc(
  * effect. It may alter the state the surface is returned to when
  * unmaximized unless overridden by the compositor.
  */
-xdg_toplevel_set_maximized :: #force_inline proc(
+xdg_toplevel_set_maximized :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
 ) {
     proxy_marshal_flags(
@@ -1966,7 +1966,7 @@ xdg_toplevel_set_maximized :: #force_inline proc(
  * effect. It may alter the state the surface is returned to when
  * unmaximized unless overridden by the compositor.
  */
-xdg_toplevel_unset_maximized :: #force_inline proc(
+xdg_toplevel_unset_maximized :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
 ) {
     proxy_marshal_flags(
@@ -2004,7 +2004,7 @@ xdg_toplevel_unset_maximized :: #force_inline proc(
  * up of subsurfaces, popups or similarly coupled surfaces) are not
  * visible below the fullscreened surface.
  */
-xdg_toplevel_set_fullscreen :: #force_inline proc(
+xdg_toplevel_set_fullscreen :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
     output: ^Output,
 ) {
@@ -2038,7 +2038,7 @@ xdg_toplevel_set_fullscreen :: #force_inline proc(
  * The client must also acknowledge the configure when committing the new
  * content (see ack_configure).
  */
-xdg_toplevel_unset_fullscreen :: #force_inline proc(
+xdg_toplevel_unset_fullscreen :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
 ) {
     proxy_marshal_flags(
@@ -2061,7 +2061,7 @@ xdg_toplevel_unset_fullscreen :: #force_inline proc(
  * also work with live previews on windows in Alt-Tab, Expose or
  * similar compositor features.
  */
-xdg_toplevel_set_minimized :: #force_inline proc(
+xdg_toplevel_set_minimized :: #force_inline proc "contextless" (
     xdg_toplevel: ^Xdg_Toplevel,
 ) {
     proxy_marshal_flags(
@@ -2097,7 +2097,7 @@ Xdg_Popup_Listener :: struct{
      * it may be sent again if the popup is setup with an xdg_positioner with
      * set_reactive requested, or in response to xdg_popup.reposition requests.
      */
-    configure: proc(
+    configure: proc "c" (
         data: rawptr,
         xdg_popup: ^Xdg_Popup,
         /*
@@ -2124,7 +2124,7 @@ Xdg_Popup_Listener :: struct{
      * compositor. The client should destroy the xdg_popup object at this
      * point.
      */
-    popup_done: proc(
+    popup_done: proc "c" (
         data: rawptr,
         xdg_popup: ^Xdg_Popup,
     ),
@@ -2147,7 +2147,7 @@ Xdg_Popup_Listener :: struct{
      * acknowledge the new popup configuration for the new position to take
      * effect. See xdg_surface.ack_configure for details.
      */
-    repositioned: proc(
+    repositioned: proc "c" (
         data: rawptr,
         xdg_popup: ^Xdg_Popup,
         /*
@@ -2158,23 +2158,23 @@ Xdg_Popup_Listener :: struct{
 
 }
 
-xdg_popup_add_listener :: #force_inline proc(xdg_popup: ^Xdg_Popup, listener: ^Xdg_Popup_Listener, data: rawptr) -> i32 {
+xdg_popup_add_listener :: #force_inline proc "contextless" (xdg_popup: ^Xdg_Popup, listener: ^Xdg_Popup_Listener, data: rawptr) -> i32 {
     return proxy_add_listener(
         cast(^Proxy)xdg_popup,
         rawptr(listener),
         data
     )
 }
-xdg_popup_set_user_data :: #force_inline proc(xdg_popup: ^Xdg_Popup, user_data: rawptr) {
+xdg_popup_set_user_data :: #force_inline proc "contextless" (xdg_popup: ^Xdg_Popup, user_data: rawptr) {
 	proxy_set_user_data(
         cast(^Proxy)xdg_popup,
         user_data
     )
 }
-xdg_popup_get_user_data :: #force_inline proc(xdg_popup: ^Xdg_Popup) -> rawptr {
+xdg_popup_get_user_data :: #force_inline proc "contextless" (xdg_popup: ^Xdg_Popup) -> rawptr {
 	return proxy_get_user_data(cast(^Proxy)xdg_popup)
 }
-xdg_popup_get_version :: #force_inline proc(xdg_popup: ^Xdg_Popup) -> u32 {
+xdg_popup_get_version :: #force_inline proc "contextless" (xdg_popup: ^Xdg_Popup) -> u32 {
     return proxy_get_version(cast(^Proxy)xdg_popup);
 }
 
@@ -2190,7 +2190,7 @@ XDG_POPUP_REPOSITION :: 2
  * If this xdg_popup is not the "topmost" popup, the
  * xdg_wm_base.not_the_topmost_popup protocol error will be sent.
  */
-xdg_popup_destroy :: #force_inline proc(
+xdg_popup_destroy :: #force_inline proc "contextless" (
     xdg_popup: ^Xdg_Popup,
 ) {
     proxy_marshal_flags(
@@ -2242,7 +2242,7 @@ xdg_popup_destroy :: #force_inline proc(
  * "owner-events" grab in X11 parlance), while the top most grabbing popup
  * will always have keyboard focus.
  */
-xdg_popup_grab :: #force_inline proc(
+xdg_popup_grab :: #force_inline proc "contextless" (
     xdg_popup: ^Xdg_Popup,
     /*
      * the wl_seat of the user event
@@ -2290,7 +2290,7 @@ xdg_popup_grab :: #force_inline proc(
  * resized, but not in response to a configure event, the client should
  * send an xdg_positioner.set_parent_size request.
  */
-xdg_popup_reposition :: #force_inline proc(
+xdg_popup_reposition :: #force_inline proc "contextless" (
     xdg_popup: ^Xdg_Popup,
     positioner: ^Xdg_Positioner,
     /*

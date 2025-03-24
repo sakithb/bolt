@@ -1,8 +1,10 @@
 package bolt
 
-import "core:dynlib"
 import "core:log"
 import "core:mem"
+import "core:time"
+import "core:math/linalg"
+import "base:runtime"
 
 import "bolt:renderer"
 import "bolt:events"
@@ -11,24 +13,22 @@ import "bolt:platform"
 INIT_WIDTH :: #config(INIT_WIDTH, 1280)
 INIT_HEIGHT :: #config(INIT_WIDTH, 720)
 
-GAME_NAME :: #config(GAME_NAME, "testbed")
-GAME_LIB :: GAME_NAME + ".so"
-
 Game_Api :: struct {
     init: proc(),
-    update: proc(),
+    update: proc(delta_time: f32, elapsed_time: time.Duration),
     deinit: proc(),
-
-    library: dynlib.Library
 }
 
-tmp_vertex_data := [?]f32{
-    0.0, -0.5, 1.0, 0.0, 0.0,
-    0.5, 0.5, 0.0, 1.0, 0.0,
-    -0.5, 0.5, 0.0, 0.0, 1.0
+Bolt_Errs :: enum {
+    None,
 }
 
-main :: proc() {
+Bolt_Err :: union  #shared_nil {
+    Bolt_Errs,
+    runtime.Allocator_Error
+}
+
+start :: proc(game_api: Game_Api) {
     when ODIN_DEBUG {
         console_logger := log.create_console_logger()
         context.logger = console_logger
@@ -56,9 +56,6 @@ main :: proc() {
         }
 	}
 
-    game_api := load_game_api() or_else log.panic("Could not load game library")
-    defer if !unload_game_api(game_api) do log.panic("Could not unload game library")
-
     if !platform.init(INIT_WIDTH, INIT_HEIGHT) do log.panic("Could not init platform layer")
     defer platform.deinit()
 
@@ -68,40 +65,32 @@ main :: proc() {
     if err := renderer.init({"Test", 0, 1, 0}); err != nil do log.panic("Could not init renderer subsystem: %v")
     defer renderer.deinit()
 
-    tri := renderer.mesh_create(tmp_vertex_data[:], 3) or_else log.panic("Could not create mesh")
-    defer renderer.mesh_destroy(&tri)
-
     game_api.init()
     defer game_api.deinit()
 
-    for !platform.wsi_should_close() {
-        game_api.update()
+    delta_time: f32
+    start_time := time.tick_now()
+    last_time := start_time
+
+    for !platform.win_should_close() {
+        now := time.tick_now()
+        delta_time = f32(time.tick_diff(last_time, now)) / f32(time.Second)
+        last_time = now
+
+        game_api.update(delta_time, time.tick_diff(start_time, now))
 
         if err := renderer.draw_begin(); err != nil {
             log.panicf("could not begin drawing: %v", err)
         }
 
-        renderer.mesh_draw(&tri)
+        for &entity in entities {
+            renderer.mesh_draw(entity.mesh, renderer.Push_Consts{linalg.matrix4_translate(entity.position)})
+        }
 
         if err := renderer.draw_end(); err != nil {
             log.panicf("could not end drawing: %v", err)
         }
 
-        platform.wsi_poll_events()
+        platform.win_poll_events()
     }
 }
-
-load_game_api :: proc() -> (api: Game_Api, ok: bool) {
-    api.library = dynlib.load_library(GAME_LIB) or_return
-
-    api.init = cast(proc())dynlib.symbol_address(api.library, "game_init") or_return
-    api.update = cast(proc())dynlib.symbol_address(api.library, "game_update") or_return
-    api.deinit = cast(proc())dynlib.symbol_address(api.library, "game_deinit") or_return
-
-    return api, true
-}
-
-unload_game_api :: proc(api: Game_Api) -> bool {
-    return dynlib.unload_library(api.library)
-}
-

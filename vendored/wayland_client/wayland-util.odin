@@ -270,6 +270,64 @@ Array :: struct {
 Fixed :: i32
 
 /**
+* Converts a fixed-point number to a floating-point number.
+*
+* \param f Fixed-point number to convert
+*
+* \return Floating-point representation of the fixed-point argument
+*/
+fixed_to_double :: #force_inline proc(f: Fixed) -> f64 {
+    u: struct #raw_union {
+        d: f64,
+        i: i64
+    }
+
+    u.i = ((1023 + 44) << 52) + (1 << 51) + i64(f)
+
+    return u.d - (3 << 43)
+}
+
+/**
+* Converts a floating-point number to a fixed-point number.
+*
+* \param d Floating-point number to convert
+*
+* \return Fixed-point representation of the floating-point argument
+*/
+fixed_from_double :: #force_inline proc(d: f64) -> Fixed {
+    u: struct #raw_union {
+        d: f64,
+        i: i64
+    }
+
+    u.d = d + (3 << (51 - 8))
+
+    return cast(Fixed)u.i;
+}
+
+/**
+* Converts a fixed-point number to an integer.
+*
+* \param f Fixed-point number to convert
+*
+* \return Integer component of the fixed-point argument
+*/
+fixed_to_int :: #force_inline proc(f: Fixed) -> i32 {
+    return f / 256
+}
+
+/**
+* Converts an integer to a fixed-point number.
+*
+* \param i Integer to convert
+*
+* \return Fixed-point representation of the integer argument
+*/
+fixed_from_int :: #force_inline proc(i: i32) -> Fixed {
+    return i * 256
+}
+
+/**
 * Protocol message argument data types
 *
 * This union represents all of the argument types in the Wayland protocol wire
@@ -475,40 +533,4 @@ foreign wl {
 	* \memberof wl_array
 	*/
 	array_copy :: proc(array: ^Array, source: ^Array) -> i32 ---
-
-	/**
-	* Converts a fixed-point number to a floating-point number.
-	*
-	* \param f Fixed-point number to convert
-	*
-	* \return Floating-point representation of the fixed-point argument
-	*/
-	fixed_to_double :: proc(f: Fixed) -> f64 ---
-
-	/**
-	* Converts a floating-point number to a fixed-point number.
-	*
-	* \param d Floating-point number to convert
-	*
-	* \return Fixed-point representation of the floating-point argument
-	*/
-	fixed_from_double :: proc(d: f64) -> Fixed ---
-
-	/**
-	* Converts a fixed-point number to an integer.
-	*
-	* \param f Fixed-point number to convert
-	*
-	* \return Integer component of the fixed-point argument
-	*/
-	fixed_to_int :: proc(f: Fixed) -> i32 ---
-
-	/**
-	* Converts an integer to a fixed-point number.
-	*
-	* \param i Integer to convert
-	*
-	* \return Fixed-point representation of the integer argument
-	*/
-	fixed_from_int :: proc(i: i32) -> Fixed ---
 }
